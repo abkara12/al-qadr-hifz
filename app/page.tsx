@@ -709,12 +709,7 @@ export default function Home() {
                   WhatsApp
                 </a>
 
-                <a
-                  href="#"
-                  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
-                >
-                  Email
-                </a>
+             
 
                 <a
                   href="https://www.google.com/maps/search/?api=1&query=49+Mountainview+Drive,+Northcliff,+Randburg,+2115"
