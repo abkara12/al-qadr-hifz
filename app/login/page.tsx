@@ -7,10 +7,30 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { useRouter } from "next/navigation";
 
+function friendlyLoginError(code?: string) {
+  switch (code) {
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/user-not-found":
+      return "No account found for this email. Please sign up.";
+    case "auth/wrong-password":
+      return "Incorrect password. Please try again.";
+    case "auth/invalid-credential":
+      return "Incorrect email or password. Please try again.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a bit and try again.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your internet connection and try again.";
+    default:
+      return "Login failed. Please try again.";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -23,7 +43,7 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/my-progress");
     } catch (error: any) {
-      setErr(error?.message ?? "Login failed");
+      setErr(friendlyLoginError(error?.code));
     } finally {
       setLoading(false);
     }
@@ -54,17 +74,10 @@ export default function LoginPage() {
         <div className="flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
             <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-                          <Image  src="/logo.png"
-                          alt="Al Qadr"
-                          width={58}
-                          height={58}
-                          className="rounded" />
-                        </div>
+              <Image src="/logo.png" alt="Al Qadr" width={58} height={58} className="rounded" />
+            </div>
           </Link>
-          <Link
-            href="/signup"
-            className="text-sm font-medium text-gray-700 hover:text-black"
-          >
+          <Link href="/signup" className="text-sm font-medium text-gray-700 hover:text-black">
             New student? <span className="text-[#9c7c38]">Create account</span>
           </Link>
         </div>
@@ -74,22 +87,15 @@ export default function LoginPage() {
           <div className="lg:col-span-6">
             <div className="rounded-3xl bg-black text-white p-9 shadow-xl relative overflow-hidden">
               <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#9c7c38]/25 blur-2xl" />
-              <p className="uppercase tracking-widest text-xs text-white/70">
-                Welcome back
-              </p>
-              <h1 className="mt-3 text-4xl font-bold tracking-tight">
-                Continue your Hifz journey
-              </h1>
+              <p className="uppercase tracking-widest text-xs text-white/70">Welcome back</p>
+              <h1 className="mt-3 text-4xl font-bold tracking-tight">Continue your Hifz journey</h1>
               <p className="mt-4 text-white/70 leading-relaxed">
                 Log in to update your daily progress and stay consistent with your weekly target.
               </p>
 
               <div className="mt-7 grid grid-cols-2 gap-3">
                 {["Sabak", "Sabak Dhor", "Dhor", "Weekly Goal"].map((t) => (
-                  <div
-                    key={t}
-                    className="rounded-2xl bg-white/10 border border-white/10 px-4 py-4"
-                  >
+                  <div key={t} className="rounded-2xl bg-white/10 border border-white/10 px-4 py-4">
                     <div className="text-sm text-white/80">{t}</div>
                     <div className="mt-1 text-sm font-semibold">Track & improve</div>
                   </div>
@@ -102,9 +108,7 @@ export default function LoginPage() {
           <div className="lg:col-span-6">
             <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-lg">
               <h2 className="text-2xl font-semibold tracking-tight">Sign In</h2>
-              <p className="mt-2 text-sm text-gray-600">
-                Enter your email and password to continue.
-              </p>
+              <p className="mt-2 text-sm text-gray-600">Enter your email and password to continue.</p>
 
               {err && (
                 <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -127,14 +131,24 @@ export default function LoginPage() {
 
                 <div>
                   <label className="text-sm font-medium text-gray-800">Password</label>
-                  <input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    required
-                    placeholder="Your password"
-                    className="mt-2 w-full h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#9c7c38]/40"
-                  />
+
+                  <div className="mt-2 relative">
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="Your password"
+                      className="w-full h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 pr-24 outline-none focus:ring-2 focus:ring-[#9c7c38]/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-9 px-3 rounded-xl border border-gray-200 bg-white/70 text-sm font-medium hover:bg-white"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -156,7 +170,11 @@ export default function LoginPage() {
             <div className="mt-6 rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
               <div className="text-sm font-semibold text-gray-900">Need to enrol?</div>
               <p className="mt-1 text-sm text-gray-700">
-                Visit <Link className="text-[#9c7c38] font-semibold hover:underline" href="/contact">Contact</Link> for the Ustadh details.
+                Visit{" "}
+                <Link className="text-[#9c7c38] font-semibold hover:underline" href="/contact">
+                  Contact
+                </Link>{" "}
+                for the Ustadh details.
               </p>
             </div>
           </div>
@@ -165,4 +183,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

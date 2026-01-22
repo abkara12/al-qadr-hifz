@@ -1,7 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "./lib/firebase";
 
 /* ✅ ADDED: burger icons */
 function MenuIcon() {
@@ -112,12 +115,7 @@ function FeatureCard({
         </div>
       </div>
 
-      <div className="mt-6 flex items-center text-sm font-medium text-[#9c7c38] opacity-80 group-hover:opacity-100 transition-opacity">
-        Learn more
-        <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">
-          →
-        </span>
-      </div>
+      {/* ✅ REMOVED: "Learn more" */}
     </div>
   );
 }
@@ -127,16 +125,19 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuState, setMenuState] = useState<"open" | "closed">("closed");
 
+  // ✅ Track auth state to show correct links
+  const [user, setUser] = useState<User | null>(null);
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
 
   const footerLinks = useMemo(
     () => [
       { label: "Home", href: "/" },
       { label: "About", href: "#about" },
       { label: "FAQ", href: "#faq" },
-
-      /* ✅ ADDED: contact link */
       { label: "Contact", href: "/contact" },
-
       { label: "Sign In", href: "/login" },
       { label: "Enrol (Sign Up)", href: "/signup" },
       { label: "My Progress", href: "/my-progress" },
@@ -185,130 +186,171 @@ export default function Home() {
 
         {/* ✅ Desktop actions (laptop and bigger) */}
         <div className="hidden lg:flex items-center gap-3">
-          <a
+          <Link
             href="/contact"
             className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-800 hover:bg-white/60 transition-colors"
           >
             Contact
-          </a>
+          </Link>
 
-          <a
-            href="/login"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-800 hover:bg-white/60 transition-colors"
-          >
-            Sign In
-          </a>
-          <a
-            href="/signup"
-            className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900 shadow-sm"
-          >
-            Sign Up
-          </a>
+          {user ? (
+            <>
+              <Link
+                href="/my-progress"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-800 hover:bg-white/60 transition-colors"
+              >
+                My Progress
+              </Link>
+              <Link
+                href="/overview"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
+              >
+                Overview
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-800 hover:bg-white/60 transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900 shadow-sm"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
 
         {/* ✅ Burger menu (smaller than laptop) */}
-        {/* ✅ Burger menu (smaller than laptop) */}
-<button
-  type="button"
-  onClick={() => {
-    setMobileOpen(true);
-    requestAnimationFrame(() => setMenuState("open"));
-  }}
-  className="lg:hidden inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 backdrop-blur shadow-sm hover:bg-white transition-colors"
-  aria-label="Open menu"
->
-  <MenuIcon />
-</button>
-
-      </header>
-
-      {/* ✅ Mobile menu overlay */}
-
-  {mobileOpen && (
-  <div className="fixed inset-0 z-50">
-    {/* Backdrop */}
-    <div
-      onClick={() => {
-        setMenuState("closed");
-        setTimeout(() => setMobileOpen(false), 600);
-      }}
-      className={`absolute inset-0 bg-black/40 transition-opacity duration-[600ms] ease-out ${
-        menuState === "open" ? "opacity-100" : "opacity-0"
-      }`}
-    />
-
-    {/* Slide panel */}
-    <div
-      className={`absolute right-0 top-0 h-full w-[85%] max-w-sm bg-white/80 backdrop-blur border-l border-gray-200 shadow-2xl p-6 transition-transform duration-[600ms] ease-[cubic-bezier(.16,1,.3,1)] ${
-        menuState === "open" ? "translate-x-0" : "translate-x-full"
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold">Menu</div>
-
         <button
           type="button"
           onClick={() => {
-            setMenuState("closed");
-            setTimeout(() => setMobileOpen(false), 600);
+            setMobileOpen(true);
+            requestAnimationFrame(() => setMenuState("open"));
           }}
-          className="inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors"
-          aria-label="Close menu"
+          className="lg:hidden inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 backdrop-blur shadow-sm hover:bg-white transition-colors"
+          aria-label="Open menu"
         >
-          <CloseIcon />
+          <MenuIcon />
         </button>
-      </div>
+      </header>
 
-      <div className="mt-8 grid gap-3">
-        {[
-          { label: "Home", href: "/" },
-          { label: "About", href: "#about" },
-          { label: "FAQ", href: "#faq" },
-          { label: "Contact", href: "/contact" },
-        ].map((l) => (
-          <a
-            key={l.label}
-            href={l.href}
+      {/* ✅ Mobile menu overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div
             onClick={() => {
               setMenuState("closed");
               setTimeout(() => setMobileOpen(false), 600);
             }}
-            className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-4 text-sm font-medium text-gray-900 hover:bg-white transition-colors"
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-[600ms] ease-out ${
+              menuState === "open" ? "opacity-100" : "opacity-0"
+            }`}
+          />
+
+          {/* Slide panel */}
+          <div
+            className={`absolute right-0 top-0 h-full w-[85%] max-w-sm bg-white/80 backdrop-blur border-l border-gray-200 shadow-2xl p-6 transition-transform duration-[600ms] ease-[cubic-bezier(.16,1,.3,1)] ${
+              menuState === "open" ? "translate-x-0" : "translate-x-full"
+            }`}
           >
-            {l.label}
-          </a>
-        ))}
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold">Menu</div>
 
-        <div className="mt-2 h-px bg-gray-200" />
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuState("closed");
+                  setTimeout(() => setMobileOpen(false), 600);
+                }}
+                className="inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors"
+                aria-label="Close menu"
+              >
+                <CloseIcon />
+              </button>
+            </div>
 
-        <a
-          href="/login"
-          onClick={() => {
-            setMenuState("closed");
-            setTimeout(() => setMobileOpen(false), 600);
-          }}
-          className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-4 text-sm font-medium text-gray-900 hover:bg-white transition-colors"
-        >
-          Sign In
-        </a>
+            <div className="mt-8 grid gap-3">
+              {[
+                { label: "Home", href: "/" },
+                { label: "About", href: "#about" },
+                { label: "FAQ", href: "#faq" },
+                { label: "Contact", href: "/contact" },
+              ].map((l) => (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={() => {
+                    setMenuState("closed");
+                    setTimeout(() => setMobileOpen(false), 600);
+                  }}
+                  className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-4 text-sm font-medium text-gray-900 hover:bg-white transition-colors"
+                >
+                  {l.label}
+                </a>
+              ))}
 
-        <a
-          href="/signup"
-          onClick={() => {
-            setMenuState("closed");
-            setTimeout(() => setMobileOpen(false), 600);
-          }}
-          className="rounded-2xl bg-black px-4 py-4 text-sm font-semibold text-white hover:bg-gray-900 transition-colors"
-        >
-          Sign Up
-        </a>
-      </div>
-    </div>
-  </div>
-)}
+              <div className="mt-2 h-px bg-gray-200" />
 
+              {user ? (
+                <>
+                  <a
+                    href="/my-progress"
+                    onClick={() => {
+                      setMenuState("closed");
+                      setTimeout(() => setMobileOpen(false), 600);
+                    }}
+                    className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-4 text-sm font-medium text-gray-900 hover:bg-white transition-colors"
+                  >
+                    My Progress
+                  </a>
 
+                  <a
+                    href="/overview"
+                    onClick={() => {
+                      setMenuState("closed");
+                      setTimeout(() => setMobileOpen(false), 600);
+                    }}
+                    className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-4 text-sm font-medium text-gray-900 hover:bg-white transition-colors"
+                  >
+                    Overview
+                  </a>
+                </>
+              ) : (
+                <>
+                  <a
+                    href="/login"
+                    onClick={() => {
+                      setMenuState("closed");
+                      setTimeout(() => setMobileOpen(false), 600);
+                    }}
+                    className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-4 text-sm font-medium text-gray-900 hover:bg-white transition-colors"
+                  >
+                    Sign In
+                  </a>
 
+                  <a
+                    href="/signup"
+                    onClick={() => {
+                      setMenuState("closed");
+                      setTimeout(() => setMobileOpen(false), 600);
+                    }}
+                    className="rounded-2xl bg-black px-4 py-4 text-sm font-semibold text-white hover:bg-gray-900 transition-colors"
+                  >
+                    Sign Up
+                  </a>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* HERO */}
       <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-10 pb-16">
@@ -316,9 +358,7 @@ export default function Home() {
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/60 backdrop-blur px-4 py-2 text-sm">
               <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
-              <span className="text-gray-700">
-                Northcliff • Hifz Class
-              </span>
+              <span className="text-gray-700">Northcliff • Hifz Class</span>
             </div>
 
             <h1 className="mt-6 text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
@@ -334,18 +374,37 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <a
-                href="/signup"
-                className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
-              >
-                Begin Your Journey
-              </a>
-              <a
-                href="#about"
-                className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
-              >
-                Explore Program
-              </a>
+              {user ? (
+                <>
+                  <Link
+                    href="/my-progress"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+                  >
+                    Go to My Progress
+                  </Link>
+                  <Link
+                    href="/overview"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
+                  >
+                    View Overview
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/signup"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+                  >
+                    Begin Your Journey
+                  </Link>
+                  <a
+                    href="#about"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
+                  >
+                    Explore Program
+                  </a>
+                </>
+              )}
             </div>
 
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl items-stretch">
@@ -429,7 +488,8 @@ export default function Home() {
           <div className="lg:col-span-5 grid gap-6">
             <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white/80 to-white/40 backdrop-blur p-8 shadow-lg">
               <p className="text-xl leading-relaxed italic">
-                “And We have certainly made the Qur’an easy for remembrance, so is there any who will remember?”
+                “And We have certainly made the Qur’an easy for remembrance, so is there any who
+                will remember?”
               </p>
               <div className="mt-5 flex items-center justify-between">
                 <p className="text-sm text-gray-500">Surah Al-Qamar • 54:17</p>
@@ -440,7 +500,8 @@ export default function Home() {
               <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#9c7c38]/25 blur-2xl" />
               <h3 className="mt-1 text-2xl font-semibold">Preview: Student Dashboard</h3>
               <p className="mt-3 text-white/70 leading-relaxed">
-                Secure login. Daily submissions. Weekly goals. A calm system designed for focus — not distraction.
+                Secure login. Daily submissions. Weekly goals. A calm system designed for focus —
+                not distraction.
               </p>
               <div className="mt-6 grid grid-cols-2 gap-3">
                 {["Sabak", "Sabak Dhor", "Dhor", "Weekly Goal"].map((t) => (
@@ -472,10 +533,13 @@ export default function Home() {
 
             <div className="mt-6 grid md:grid-cols-2 gap-8">
               <p className="text-gray-700 leading-relaxed text-lg">
-                Located in Northcliff, the Al Qadr Hifz class offers a peaceful and disciplined environment where students build a deep and lasting connection with the Qur’an.
+                Located in Northcliff, the Al Qadr Hifz class offers a peaceful and disciplined
+                environment where students build a deep and lasting connection with the Qur’an.
               </p>
               <p className="text-gray-700 leading-relaxed text-lg">
-                Through a structured system emphasising focused Sabak, consistent Dhor, and clear weekly targets, students are guided step by step in their memorisation journey — while nurturing discipline, consistency, and good character.
+                Through a structured system emphasising focused Sabak, consistent Dhor, and clear
+                weekly targets, students are guided step by step in their memorisation journey —
+                while nurturing discipline, consistency, and good character.
               </p>
             </div>
           </div>
@@ -494,12 +558,12 @@ export default function Home() {
                 Designed for Consistency & Excellence
               </h2>
             </div>
-            <a
+            <Link
               href="/contact"
               className="inline-flex md:self-end items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
             >
               Enrol Now
-            </a>
+            </Link>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -536,11 +600,7 @@ export default function Home() {
               text="Each student logs in privately and tracks their own Sabak, Dhor, and weekly goal progress."
               icon={
                 <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
-                  <path
-                    d="M12 12a4 4 0 100-8 4 4 0 000 8z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
+                  <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" strokeWidth="2" />
                   <path
                     d="M4 20a8 8 0 0116 0"
                     stroke="currentColor"
@@ -558,12 +618,8 @@ export default function Home() {
       <section id="faq" className="py-24">
         <div className="max-w-4xl mx-auto px-6 sm:px-10">
           <div className="text-center mb-12">
-            <p className="uppercase tracking-widest text-sm text-[#9c7c38]">
-              Questions & Answers
-            </p>
-            <h2 className="mt-2 text-4xl font-semibold tracking-tight">
-              Frequently Asked Questions
-            </h2>
+            <p className="uppercase tracking-widest text-sm text-[#9c7c38]">Questions & Answers</p>
+            <h2 className="mt-2 text-4xl font-semibold tracking-tight">Frequently Asked Questions</h2>
           </div>
 
           <div className="grid gap-4">
@@ -583,7 +639,6 @@ export default function Home() {
               question="How do students submit their daily progress?"
               answer="After signing in, students go to the My Progress page where they enter their Sabak, Sabak Dhor, Dhor, and weekly goal. The system saves it securely and updates the Overview automatically."
             />
-           
           </div>
         </div>
       </section>
@@ -597,31 +652,29 @@ export default function Home() {
 
             <div className="grid md:grid-cols-12 gap-10 items-center relative">
               <div className="md:col-span-8">
-                <p className="uppercase tracking-widest text-sm text-[#9c7c38]">
-                  Ready to begin?
-                </p>
+                <p className="uppercase tracking-widest text-sm text-[#9c7c38]">Ready to begin?</p>
                 <h2 className="mt-2 text-4xl font-semibold tracking-tight">
                   Enrol and start tracking your Hifz journey today
                 </h2>
                 <p className="mt-4 text-gray-700 text-lg leading-relaxed">
-                  A focused system for daily Sabak, consistent Dhor, and weekly targets —
-                  built for clarity, discipline, and steady progress.
+                  A focused system for daily Sabak, consistent Dhor, and weekly targets — built for
+                  clarity, discipline, and steady progress.
                 </p>
               </div>
 
               <div className="md:col-span-4 flex md:justify-end gap-3">
-                <a
+                <Link
                   href="/signup"
                   className="inline-flex items-center justify-center h-12 px-7 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
                 >
                   Sign Up
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/login"
                   className="inline-flex items-center justify-center h-12 px-7 rounded-full border border-gray-300 bg-white/50 backdrop-blur text-base font-medium hover:bg-white/80 transition-colors"
                 >
                   Sign In
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -636,13 +689,7 @@ export default function Home() {
             <div className="lg:col-span-4">
               <div className="flex items-center gap-4">
                 <div className="h-[64px] w-[64px] rounded-3xl bg-white/70 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-                  <Image
-                    src="/logo.png"
-                    alt="Al Qadr"
-                    width={46}
-                    height={46}
-                    className="rounded"
-                  />
+                  <Image src="/logo.png" alt="Al Qadr" width={46} height={46} className="rounded" />
                 </div>
                 <div>
                   <div className="font-semibold text-lg">Al Qadr</div>
@@ -650,20 +697,17 @@ export default function Home() {
                 </div>
               </div>
 
-              <p className="mt-5 text-sm text-gray-700 leading-relaxed max-w-sm">
-                A disciplined and peaceful environment for Qur’anic memorisation.
-                Track Sabak, Dhor, and weekly targets through a private student portal.
-              </p>
+              {/* ✅ REMOVED footer paragraph */}
 
               <div className="mt-6 flex flex-wrap gap-3">
-               <a
-  href="https://wa.me/27606211418"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
->
-  WhatsApp
-</a>
+                <a
+                  href="https://wa.me/27606211418"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
+                >
+                  WhatsApp
+                </a>
 
                 <a
                   href="#"
@@ -671,15 +715,15 @@ export default function Home() {
                 >
                   Email
                 </a>
-               <a
-  href="https://www.google.com/maps/search/?api=1&query=49+Mountainview+Drive,+Northcliff,+Randburg,+2115"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
->
-  Location
-</a>
 
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=49+Mountainview+Drive,+Northcliff,+Randburg,+2115"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
+                >
+                  Location
+                </a>
               </div>
             </div>
 
@@ -687,9 +731,7 @@ export default function Home() {
             <div className="lg:col-span-7 lg:col-start-6">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-8">
                 <div>
-                  <div className="text-sm font-semibold text-gray-900 mb-4">
-                    Explore
-                  </div>
+                  <div className="text-sm font-semibold text-gray-900 mb-4">Explore</div>
                   <div className="space-y-3">
                     <a href="/" className="block text-sm text-gray-700 hover:text-black">
                       Home
@@ -700,7 +742,6 @@ export default function Home() {
                     <a href="#faq" className="block text-sm text-gray-700 hover:text-black">
                       FAQ
                     </a>
-                    {/* ✅ ADDED: footer explore contact */}
                     <a href="/contact" className="block text-sm text-gray-700 hover:text-black">
                       Contact
                     </a>
@@ -708,9 +749,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <div className="text-sm font-semibold text-gray-900 mb-4">
-                    Student Portal
-                  </div>
+                  <div className="text-sm font-semibold text-gray-900 mb-4">Student Portal</div>
                   <div className="space-y-3">
                     <a href="/login" className="block text-sm text-gray-700 hover:text-black">
                       Sign In
@@ -728,16 +767,14 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <div className="text-sm font-semibold text-gray-900 mb-4">
-                    Program
-                  </div>
+                  <div className="text-sm font-semibold text-gray-900 mb-4">Program</div>
                   <div className="space-y-3">
                     <a href="#about" className="block text-sm text-gray-700 hover:text-black">
                       Structure
                     </a>
-                    <a href="#faq" className="block text-sm text-gray-700 hover:text-black">
-                      Requirements
-                    </a>
+
+                    {/* ✅ REMOVED: Requirements link */}
+
                     <a href="/signup" className="block text-sm text-gray-700 hover:text-black">
                       Enrolment
                     </a>
@@ -751,9 +788,7 @@ export default function Home() {
                     <div className="text-sm uppercase tracking-widest text-[#9c7c38]">
                       Student Portal
                     </div>
-                    <div className="mt-1 font-semibold text-lg">
-                      Ready to begin your journey?
-                    </div>
+                    <div className="mt-1 font-semibold text-lg">Ready to begin your journey?</div>
                     <div className="mt-1 text-sm text-gray-700">
                       Sign up and start tracking daily progress.
                     </div>

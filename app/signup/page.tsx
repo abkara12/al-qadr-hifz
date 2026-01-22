@@ -7,10 +7,26 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { useRouter } from "next/navigation";
 
+function friendlySignupError(code?: string) {
+  switch (code) {
+    case "auth/email-already-in-use":
+      return "This email is already registered. Please sign in instead.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/weak-password":
+      return "Password is too weak. Please use at least 6 characters.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your internet connection and try again.";
+    default:
+      return "Signup failed. Please try again.";
+  }
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -23,7 +39,7 @@ export default function SignupPage() {
       await createUserWithEmailAndPassword(auth, email, password);
       router.push("/my-progress");
     } catch (error: any) {
-      setErr(error?.message ?? "Signup failed");
+      setErr(friendlySignupError(error?.code));
     } finally {
       setLoading(false);
     }
@@ -54,17 +70,10 @@ export default function SignupPage() {
         <div className="flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
             <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-              <Image  src="/logo.png"
-              alt="Al Qadr"
-              width={58}
-              height={58}
-              className="rounded" />
+              <Image src="/logo.png" alt="Al Qadr" width={58} height={58} className="rounded" />
             </div>
           </Link>
-          <Link
-            href="/login"
-            className="text-sm font-medium text-gray-700 hover:text-black"
-          >
+          <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-black">
             Already have an account? <span className="text-[#9c7c38]">Sign In</span>
           </Link>
         </div>
@@ -73,9 +82,7 @@ export default function SignupPage() {
           {/* left */}
           <div className="lg:col-span-6">
             <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-8 shadow-lg">
-              <p className="uppercase tracking-widest text-xs text-[#9c7c38]">
-                Student Portal
-              </p>
+              <p className="uppercase tracking-widest text-xs text-[#9c7c38]">Student Portal</p>
               <h1 className="mt-3 text-4xl font-bold tracking-tight leading-tight">
                 Create your account
               </h1>
@@ -104,7 +111,8 @@ export default function SignupPage() {
             <div className="mt-6 rounded-3xl bg-black text-white p-7 shadow-xl relative overflow-hidden">
               <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#9c7c38]/25 blur-2xl" />
               <p className="text-white/70 text-sm italic leading-relaxed">
-                “And We have certainly made the Qur’an easy for remembrance, so is there any who will remember?”
+                “And We have certainly made the Qur’an easy for remembrance, so is there any who
+                will remember?”
               </p>
               <p className="mt-4 text-white/70 text-sm">Surah Al-Qamar • 54:17</p>
             </div>
@@ -139,14 +147,24 @@ export default function SignupPage() {
 
                 <div>
                   <label className="text-sm font-medium text-gray-800">Password</label>
-                  <input
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    type="password"
-                    required
-                    placeholder="Minimum 6 characters"
-                    className="mt-2 w-full h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#9c7c38]/40"
-                  />
+
+                  <div className="mt-2 relative">
+                    <input
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="Minimum 6 characters"
+                      className="w-full h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 pr-24 outline-none focus:ring-2 focus:ring-[#9c7c38]/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-9 px-3 rounded-xl border border-gray-200 bg-white/70 text-sm font-medium hover:bg-white"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -172,7 +190,11 @@ export default function SignupPage() {
             <div className="mt-6 rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
               <div className="text-sm font-semibold text-gray-900">Need help enrolling?</div>
               <p className="mt-1 text-sm text-gray-700">
-                Visit the <Link className="text-[#9c7c38] font-semibold hover:underline" href="/contact">Contact</Link> page for Ustadh details.
+                Visit the{" "}
+                <Link className="text-[#9c7c38] font-semibold hover:underline" href="/contact">
+                  Contact
+                </Link>{" "}
+                page for Ustadh details.
               </p>
             </div>
           </div>
