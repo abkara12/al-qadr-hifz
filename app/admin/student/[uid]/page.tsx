@@ -57,13 +57,13 @@ function Shell({
         <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_12%,transparent_55%,rgba(0,0,0,0.10))]" />
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 sm:px-10 py-10">
-        <div className="flex items-start justify-between gap-6">
-          <div>
+      <div className="max-w-5xl mx-auto px-5 sm:px-10 py-8 sm:py-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0">
             <p className="uppercase tracking-widest text-xs text-[#9c7c38]">
               Admin → Student
             </p>
-            <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
+            <h1 className="mt-2 text-2xl sm:text-4xl font-semibold tracking-tight break-words">
               {title}
             </h1>
             {subtitle ? (
@@ -73,10 +73,12 @@ function Shell({
             ) : null}
           </div>
 
-          {rightSlot ? <div className="shrink-0">{rightSlot}</div> : null}
+          {rightSlot ? (
+            <div className="w-full sm:w-auto">{rightSlot}</div>
+          ) : null}
         </div>
 
-        <div className="mt-8">{children}</div>
+        <div className="mt-7 sm:mt-8">{children}</div>
       </div>
     </main>
   );
@@ -84,7 +86,7 @@ function Shell({
 
 function LoadingCard() {
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-7 shadow-sm">
+    <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-6 sm:p-7 shadow-sm">
       <div className="h-5 w-40 bg-black/10 rounded-full animate-pulse" />
       <div className="mt-3 h-10 w-2/3 bg-black/10 rounded-2xl animate-pulse" />
       <div className="mt-6 grid gap-3">
@@ -142,7 +144,6 @@ export default function AdminStudentPage() {
 
   useEffect(() => {
     async function loadStudent() {
-      // student profile
       const sDoc = await getDoc(doc(db, "users", studentUid));
       if (sDoc.exists()) {
         const data = sDoc.data() as any;
@@ -155,10 +156,7 @@ export default function AdminStudentPage() {
         setDhorMistakes(toText(data.currentDhorMistakes));
       }
 
-      // today's log (override if exists)
-      const todayDoc = await getDoc(
-        doc(db, "users", studentUid, "logs", dateKey)
-      );
+      const todayDoc = await getDoc(doc(db, "users", studentUid, "logs", dateKey));
       if (todayDoc.exists()) {
         const d = todayDoc.data() as any;
         setSabak(toText(d.sabak));
@@ -181,7 +179,6 @@ export default function AdminStudentPage() {
     setMsg(null);
 
     try {
-      // 1) daily log
       await setDoc(
         doc(db, "users", studentUid, "logs", dateKey),
         {
@@ -199,7 +196,6 @@ export default function AdminStudentPage() {
         { merge: true }
       );
 
-      // 2) snapshot
       await setDoc(
         doc(db, "users", studentUid),
         {
@@ -224,7 +220,6 @@ export default function AdminStudentPage() {
     }
   }
 
-  // Smooth loading: do NOT show access states until checking done
   if (checking) {
     return (
       <Shell title="Loading…" subtitle="Opening student page…">
@@ -235,23 +230,10 @@ export default function AdminStudentPage() {
 
   if (!me) {
     return (
-      <Shell
-        title="Please sign in"
-        subtitle="You must be signed in to log work for a student."
-        rightSlot={
-          <Link
-            href="/admin"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
-          >
-            Back
-          </Link>
-        }
-      >
-        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-7 shadow-sm">
-          <p className="text-gray-700">
-            Go to login, then return to the admin dashboard.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
+      <Shell title="Please sign in" subtitle="You must be signed in to log work for a student.">
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
+          <p className="text-gray-700">Go to login, then return to the admin dashboard.</p>
+          <div className="mt-5 flex flex-col sm:flex-row gap-3">
             <Link
               href="/login"
               className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
@@ -272,25 +254,10 @@ export default function AdminStudentPage() {
 
   if (!isAdmin) {
     return (
-      <Shell
-        title="Access denied"
-        subtitle="This account is not marked as admin."
-        rightSlot={
-          <Link
-            href="/admin"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
-          >
-            Back
-          </Link>
-        }
-      >
-        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-7 shadow-sm">
+      <Shell title="Access denied" subtitle="This account is not marked as admin.">
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
           <div className="text-sm text-gray-600">Signed in as</div>
           <div className="mt-1 font-semibold">{me.email}</div>
-          <p className="mt-3 text-sm text-gray-700">
-            Set <code className="font-mono">role: "admin"</code> in your user doc
-            in Firestore.
-          </p>
         </div>
       </Shell>
     );
@@ -301,79 +268,50 @@ export default function AdminStudentPage() {
       title={`Log work for ${studentEmail || "student"}`}
       subtitle={`Submitting for ${dateKey}`}
       rightSlot={
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <Link
             href="/admin"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+            className="inline-flex w-full sm:w-auto items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
           >
             Back
           </Link>
           <Link
             href={`/admin/student/${studentUid}/overview`}
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+            className="inline-flex w-full sm:w-auto items-center justify-center h-11 px-5 rounded-full bg-black text-white hover:bg-gray-900 transition-colors text-sm font-semibold shadow-sm"
           >
             Student Overview
           </Link>
         </div>
       }
     >
-      <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-7 sm:p-8 shadow-sm">
-        {/* top mini badge row */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-5 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 w-fit">
             <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
             Update today’s work
           </div>
 
           <div className="text-sm text-gray-600">
-            Saved entries update the student’s Overview automatically.
+            Saved entries update Overview automatically.
           </div>
         </div>
 
         <form onSubmit={handleSave} className="mt-6 grid gap-4">
-          <Field
-            label="Sabak"
-            value={sabak}
-            setValue={setSabak}
-            hint="Example: 2 pages / 1 ruku / 5 lines"
-          />
-          <Field
-            label="Sabak Dhor"
-            value={sabakDhor}
-            setValue={setSabakDhor}
-            hint="Revision for current sabak"
-          />
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field
-              label="Sabak Dhor Mistakes"
-              value={sabakDhorMistakes}
-              setValue={setSabakDhorMistakes}
-              hint="Number"
-            />
-            <Field
-              label="Dhor Mistakes"
-              value={dhorMistakes}
-              setValue={setDhorMistakes}
-              hint="Number"
-            />
+          <Field label="Sabak" value={sabak} setValue={setSabak} hint="Example: 2 pages / 1 ruku / 5 lines" />
+          <Field label="Sabak Dhor" value={sabakDhor} setValue={setSabakDhor} hint="Revision for current sabak" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Sabak Dhor Mistakes" value={sabakDhorMistakes} setValue={setSabakDhorMistakes} hint="Number" />
+            <Field label="Dhor Mistakes" value={dhorMistakes} setValue={setDhorMistakes} hint="Number" />
           </div>
-          <Field
-            label="Dhor"
-            value={dhor}
-            setValue={setDhor}
-            hint="Older revision"
-          />
-          <Field
-            label="Weekly Sabak Goal"
-            value={weeklyGoal}
-            setValue={setWeeklyGoal}
-            hint="Example: 10 pages"
-          />
+
+          <Field label="Dhor" value={dhor} setValue={setDhor} hint="Older revision" />
+          <Field label="Weekly Sabak Goal" value={weeklyGoal} setValue={setWeeklyGoal} hint="Example: 10 pages" />
 
           <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <button
               disabled={saving}
-              className="h-12 px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
+              className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
             >
               {saving ? "Saving..." : "Save"}
             </button>

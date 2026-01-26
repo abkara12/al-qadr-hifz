@@ -4,12 +4,106 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+} from "firebase/firestore";
 import { auth, db } from "../../../../lib/firebase";
 
 function toText(v: unknown) {
   if (v === null || v === undefined) return "";
   return typeof v === "string" ? v : String(v);
+}
+
+type LogRow = {
+  dateKey: string;
+  sabak: string;
+  sabakDhor: string;
+  dhor: string;
+  weeklyGoal: string;
+  sabakDhorMistakes: string;
+  dhorMistakes: string;
+};
+
+function Shell({
+  title,
+  subtitle,
+  rightSlot,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  rightSlot?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-screen text-gray-900">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
+        <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/25 blur-3xl" />
+        <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/15 blur-3xl" />
+        <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/18 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.14]"
+          style={{
+            backgroundImage:
+              "linear-gradient(45deg, rgba(0,0,0,0.18) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.18) 1px, transparent 1px)",
+            backgroundSize: "72px 72px",
+            backgroundPosition: "0 0, 36px 36px",
+          }}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_12%,transparent_55%,rgba(0,0,0,0.10))]" />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-5 sm:px-10 py-8 sm:py-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="uppercase tracking-widest text-xs text-[#9c7c38]">
+              Admin → Student Overview
+            </p>
+            <h1 className="mt-2 text-2xl sm:text-4xl font-semibold tracking-tight break-words">
+              {title}
+            </h1>
+            {subtitle ? (
+              <p className="mt-2 text-gray-700 leading-relaxed max-w-2xl">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+
+          {rightSlot ? <div className="w-full sm:w-auto">{rightSlot}</div> : null}
+        </div>
+
+        <div className="mt-7 sm:mt-8">{children}</div>
+      </div>
+    </main>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 shadow-sm hover:shadow-lg transition-all duration-300">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[#9c7c38]/12 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="text-xs uppercase tracking-widest text-[#9c7c38]">{label}</div>
+      <div className="mt-2 text-lg sm:text-2xl font-semibold text-gray-900 break-words">
+        {value || "—"}
+      </div>
+      {sub ? <div className="mt-2 text-sm text-gray-600">{sub}</div> : null}
+    </div>
+  );
 }
 
 export default function AdminStudentOverviewPage() {
@@ -21,10 +115,17 @@ export default function AdminStudentOverviewPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const [studentEmail, setStudentEmail] = useState("");
-  const [weeklyGoalSummary, setWeeklyGoalSummary] = useState<string>("");
+  const [snapshot, setSnapshot] = useState({
+    weeklyGoal: "",
+    currentSabak: "",
+    currentSabakDhor: "",
+    currentDhor: "",
+    currentSabakDhorMistakes: "",
+    currentDhorMistakes: "",
+  });
 
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logs, setLogs] = useState<LogRow[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -49,147 +150,184 @@ export default function AdminStudentOverviewPage() {
   }, []);
 
   useEffect(() => {
-    async function load() {
+    async function loadStudent() {
+      const sDoc = await getDoc(doc(db, "users", studentUid));
+      if (sDoc.exists()) {
+        const data = sDoc.data() as any;
+        setStudentEmail(toText(data.email));
+        setSnapshot({
+          weeklyGoal: toText(data.weeklyGoal),
+          currentSabak: toText(data.currentSabak),
+          currentSabakDhor: toText(data.currentSabakDhor),
+          currentDhor: toText(data.currentDhor),
+          currentSabakDhorMistakes: toText(data.currentSabakDhorMistakes),
+          currentDhorMistakes: toText(data.currentDhorMistakes),
+        });
+      }
+    }
+
+    async function loadLogs() {
       setLoadingLogs(true);
       try {
-        const sDoc = await getDoc(doc(db, "users", studentUid));
-        if (sDoc.exists()) {
-          const data = sDoc.data() as any;
-          setStudentEmail(toText(data.email));
-
-          const wg = data.weeklyGoalState;
-          if (wg?.target) {
-            const done = wg.daysToComplete
-              ? `✅ Completed in ${wg.daysToComplete} day(s)`
-              : wg.completedAt
-              ? `✅ Completed`
-              : `In progress`;
-            setWeeklyGoalSummary(`${toText(wg.target)} • ${done}`);
-          } else {
-            setWeeklyGoalSummary("No weekly goal set yet");
-          }
-        }
-
-        const q = query(
+        const qy = query(
           collection(db, "users", studentUid, "logs"),
-          orderBy("dateKey", "desc")
+          orderBy("dateKey", "desc"),
+          limit(30)
         );
-        const snap = await getDocs(q);
-        setLogs(snap.docs.map((d) => d.data()));
+        const snap = await getDocs(qy);
+
+        const rows: LogRow[] = snap.docs.map((d) => {
+          const x = d.data() as any;
+          return {
+            dateKey: toText(x.dateKey || d.id),
+            sabak: toText(x.sabak),
+            sabakDhor: toText(x.sabakDhor),
+            dhor: toText(x.dhor),
+            weeklyGoal: toText(x.weeklyGoal),
+            sabakDhorMistakes: toText(x.sabakDhorMistakes),
+            dhorMistakes: toText(x.dhorMistakes),
+          };
+        });
+
+        setLogs(rows);
       } finally {
         setLoadingLogs(false);
       }
     }
 
-    if (!checking && isAdmin && studentUid) load();
-  }, [checking, isAdmin, studentUid]);
+    if (studentUid) {
+      loadStudent();
+      loadLogs();
+    }
+  }, [studentUid]);
 
   if (checking) {
     return (
-      <main className="min-h-screen text-gray-900">
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
+      <Shell title="Loading…" subtitle="Opening student overview…">
+        <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
+          <div className="h-6 w-2/3 bg-black/10 rounded-2xl animate-pulse" />
+          <div className="mt-4 h-12 bg-black/10 rounded-2xl animate-pulse" />
         </div>
-        <div className="max-w-4xl mx-auto px-6 py-12">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
-            <div className="h-6 w-48 rounded-2xl bg-black/10 animate-pulse" />
-          </div>
-        </div>
-      </main>
+      </Shell>
     );
   }
 
   if (!me) {
     return (
-      <main className="min-h-screen p-10">
-        <div className="rounded-2xl border p-6">
-          <div className="text-xl font-semibold">Please sign in</div>
-          <div className="mt-3">
-            <Link className="underline" href="/login">Go to login</Link>
-          </div>
+      <Shell title="Please sign in" subtitle="You must sign in to view this page.">
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 shadow-sm">
+          <Link className="underline" href="/login">
+            Go to login
+          </Link>
         </div>
-      </main>
+      </Shell>
     );
   }
 
   if (!isAdmin) {
     return (
-      <main className="min-h-screen p-10">
-        <div className="rounded-2xl border p-6">
-          <div className="text-xl font-semibold">Not allowed</div>
-          <p className="mt-2 text-gray-600">You are not an admin.</p>
-          <div className="mt-4 flex gap-3">
-            <Link className="underline" href="/">Home</Link>
-            <Link className="underline" href="/admin">Admin</Link>
-          </div>
+      <Shell title="Access denied" subtitle="This account is not marked as admin.">
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 shadow-sm">
+          <div className="text-sm text-gray-600">Signed in as</div>
+          <div className="mt-1 font-semibold">{me.email}</div>
         </div>
-      </main>
+      </Shell>
     );
   }
 
   return (
-    <main className="min-h-screen text-gray-900">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-        <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/25 blur-3xl" />
-        <div className="absolute top-[-25%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/15 blur-3xl" />
-        <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/18 blur-3xl" />
+    <Shell
+      title={studentEmail ? studentEmail : "Student"}
+      subtitle="Snapshot + recent logs"
+      rightSlot={
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Link
+            href="/admin"
+            className="inline-flex w-full sm:w-auto items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+          >
+            Back
+          </Link>
+          <Link
+            href={`/admin/student/${studentUid}`}
+            className="inline-flex w-full sm:w-auto items-center justify-center h-11 px-5 rounded-full bg-black text-white hover:bg-gray-900 transition-colors text-sm font-semibold shadow-sm"
+          >
+            Log Work
+          </Link>
+        </div>
+      }
+    >
+      {/* Snapshot cards */}
+      <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard label="Weekly Goal" value={snapshot.weeklyGoal} sub="Sabak target for the week" />
+        <StatCard label="Current Sabak" value={snapshot.currentSabak} />
+        <StatCard label="Current Sabak Dhor" value={snapshot.currentSabakDhor} />
+        <StatCard label="Current Dhor" value={snapshot.currentDhor} />
+        <StatCard label="Sabak Dhor Mistakes" value={snapshot.currentSabakDhorMistakes} />
+        <StatCard label="Dhor Mistakes" value={snapshot.currentDhorMistakes} />
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 sm:px-10 py-10">
-        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="text-sm text-gray-600">Ustad → Student Overview</div>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-                {studentEmail || "Student"}
-              </h1>
-              <p className="mt-2 text-gray-700">
-                Weekly goal: <span className="font-semibold">{weeklyGoalSummary}</span>
-              </p>
+      {/* Logs */}
+      <div className="mt-8 rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <div className="text-sm text-gray-600">History</div>
+            <div className="mt-1 text-2xl font-semibold tracking-tight">
+              Recent logs
             </div>
-
-            <div className="flex gap-3">
-              <Link
-                href={`/admin/student/${studentUid}`}
-                className="inline-flex items-center justify-center h-11 px-5 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
-              >
-                Log work
-              </Link>
-              <Link
-                href="/admin"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
-              >
-                Back
-              </Link>
+            <div className="mt-1 text-sm text-gray-700">
+              Showing the most recent {Math.min(logs.length, 30)} entries.
             </div>
           </div>
 
-          <div className="mt-8 rounded-3xl border border-gray-200 bg-white/70 p-6">
-            <div className="text-sm font-semibold text-gray-900">Recent logs</div>
-
-            {loadingLogs ? (
-              <div className="mt-4 text-sm text-gray-600">Loading logs…</div>
-            ) : logs.length ? (
-              <div className="mt-4 grid gap-3">
-                {logs.slice(0, 14).map((l, idx) => (
-                  <div key={idx} className="rounded-2xl border border-gray-200 bg-white/70 p-4">
-                    <div className="text-xs text-gray-500">{l.dateKey}</div>
-                    <div className="mt-2 grid sm:grid-cols-2 gap-2 text-sm">
-                      <div><span className="font-semibold">Sabak:</span> {toText(l.sabak)}</div>
-                      <div><span className="font-semibold">Sabak Dhor:</span> {toText(l.sabakDhor)}</div>
-                      <div><span className="font-semibold">Dhor:</span> {toText(l.dhor)}</div>
-                      <div><span className="font-semibold">Mistakes:</span> SD {toText(l.sabakDhorMistakes)} • D {toText(l.dhorMistakes)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 text-sm text-gray-600">No logs yet.</div>
-            )}
+          <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 w-fit">
+            <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
+            Updates live
           </div>
         </div>
+
+        {loadingLogs ? (
+          <div className="mt-6 grid gap-3">
+            <div className="h-16 bg-black/10 rounded-2xl animate-pulse" />
+            <div className="h-16 bg-black/10 rounded-2xl animate-pulse" />
+            <div className="h-16 bg-black/10 rounded-2xl animate-pulse" />
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-gray-200 bg-white/70 p-5 text-sm text-gray-700">
+            No logs yet for this student.
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-3">
+            {logs.map((r) => (
+              <div
+                key={r.dateKey}
+                className="rounded-2xl border border-gray-200 bg-white/70 p-5 hover:bg-white transition-colors"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="font-semibold text-gray-900">{r.dateKey}</div>
+                  <div className="text-xs text-gray-600">
+                    Mistakes: SD {r.sabakDhorMistakes || "—"} • D {r.dhorMistakes || "—"}
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-3 text-sm">
+                  <div className="rounded-xl border border-gray-200 bg-white/70 px-3 py-2">
+                    <div className="text-xs text-gray-500">Sabak</div>
+                    <div className="font-semibold">{r.sabak || "—"}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 bg-white/70 px-3 py-2">
+                    <div className="text-xs text-gray-500">Sabak Dhor</div>
+                    <div className="font-semibold">{r.sabakDhor || "—"}</div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 bg-white/70 px-3 py-2">
+                    <div className="text-xs text-gray-500">Dhor</div>
+                    <div className="font-semibold">{r.dhor || "—"}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </main>
+    </Shell>
   );
 }
