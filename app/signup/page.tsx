@@ -38,15 +38,17 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const cleanEmail = email.trim().toLowerCase();
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
 
       // ✅ Create a profile doc so Admin can search students by email + set roles
       await setDoc(
         doc(db, "users", cred.user.uid),
         {
-          email: (cred.user.email ?? email).toLowerCase(),
+          email: (cred.user.email ?? cleanEmail).toLowerCase(),
           role: "student",
           createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
