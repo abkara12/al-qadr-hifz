@@ -14,25 +14,110 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
-type Student = { uid: string; email: string };
+type StudentOption = { uid: string; email: string };
+
+function getDateKeySA() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const y = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const m = parts.find((p) => p.type === "month")?.value ?? "00";
+  const d = parts.find((p) => p.type === "day")?.value ?? "00";
+  return `${y}-${m}-${d}`;
+}
+
+function PageShell({
+  children,
+  title,
+  subtitle,
+  rightSlot,
+}: {
+  children: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  rightSlot?: React.ReactNode;
+}) {
+  return (
+    <main className="min-h-screen text-gray-900">
+      {/* Background (matches your site vibe) */}
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
+        <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/25 blur-3xl" />
+        <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/15 blur-3xl" />
+        <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/18 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.14]"
+          style={{
+            backgroundImage:
+              "linear-gradient(45deg, rgba(0,0,0,0.18) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.18) 1px, transparent 1px)",
+            backgroundSize: "72px 72px",
+            backgroundPosition: "0 0, 36px 36px",
+          }}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_12%,transparent_55%,rgba(0,0,0,0.10))]" />
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 sm:px-10 py-10">
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <p className="uppercase tracking-widest text-xs text-[#9c7c38]">
+              Admin Portal
+            </p>
+            <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
+              {title}
+            </h1>
+            {subtitle ? (
+              <p className="mt-2 text-gray-700 leading-relaxed max-w-2xl">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+
+          {rightSlot ? (
+            <div className="shrink-0">{rightSlot}</div>
+          ) : null}
+        </div>
+
+        <div className="mt-8">{children}</div>
+      </div>
+    </main>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
+      <div className="h-4 w-28 bg-black/10 rounded-full animate-pulse" />
+      <div className="mt-3 h-8 w-2/3 bg-black/10 rounded-2xl animate-pulse" />
+      <div className="mt-6 grid gap-3">
+        <div className="h-12 w-full bg-black/10 rounded-2xl animate-pulse" />
+        <div className="h-12 w-full bg-black/10 rounded-2xl animate-pulse" />
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const [me, setMe] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [selectedUid, setSelectedUid] = useState<string>("");
 
-  const selected = useMemo(
-    () => students.find((s) => s.uid === selectedUid) ?? null,
-    [students, selectedUid]
-  );
+  const [err, setErr] = useState<string | null>(null);
+
+  const today = useMemo(() => getDateKeySA(), []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
+      setMe(u);
 
       if (!u) {
         setIsAdmin(false);
@@ -41,8 +126,8 @@ export default function AdminPage() {
       }
 
       try {
-        const me = await getDoc(doc(db, "users", u.uid));
-        const role = me.exists() ? (me.data() as any).role : null;
+        const myDoc = await getDoc(doc(db, "users", u.uid));
+        const role = myDoc.exists() ? (myDoc.data() as any).role : null;
         setIsAdmin(role === "admin");
       } finally {
         setChecking(false);
@@ -55,204 +140,251 @@ export default function AdminPage() {
   useEffect(() => {
     async function loadStudents() {
       if (!isAdmin) return;
+
       setLoadingStudents(true);
+      setErr(null);
 
       try {
-        // ✅ Only students
-        const q = query(
+        // Requires composite index (role + email) which you already created
+        const qy = query(
           collection(db, "users"),
           where("role", "==", "student"),
           orderBy("email")
         );
 
-        const snap = await getDocs(q);
-        const list: Student[] = snap.docs
-          .map((d) => ({ uid: d.id, email: ((d.data() as any).email ?? "").toLowerCase() }))
-          .filter((s) => s.email);
+        const snap = await getDocs(qy);
+        const list: StudentOption[] = snap.docs.map((d) => {
+          const data = d.data() as any;
+          return {
+            uid: d.id,
+            email: (data.email || "").toString(),
+          };
+        });
 
         setStudents(list);
-        // auto select first student
-        if (list.length && !selectedUid) setSelectedUid(list[0].uid);
-      } catch (e) {
-        setStudents([]);
+
+        // auto-select first (nice UX)
+        if (!selectedUid && list.length > 0) {
+          setSelectedUid(list[0].uid);
+        }
+      } catch (e: any) {
+        setErr(e?.message ?? "Could not load students.");
       } finally {
         setLoadingStudents(false);
       }
     }
 
-    if (!checking && isAdmin) loadStudents();
-  }, [checking, isAdmin, selectedUid]);
+    loadStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
-  // ✅ Smooth loading: don’t render “not admin” until auth check completes
+  // Smooth loading: do NOT show “not admin” until checking is done
   if (checking) {
     return (
-      <main className="min-h-screen text-gray-900">
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-        </div>
-
-        <div className="max-w-3xl mx-auto px-6 py-12">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
-            <div className="h-4 w-28 rounded-full bg-black/10 animate-pulse" />
-            <div className="mt-4 h-8 w-64 rounded-2xl bg-black/10 animate-pulse" />
-            <div className="mt-3 h-4 w-full rounded-full bg-black/10 animate-pulse" />
-          </div>
-        </div>
-      </main>
+      <PageShell title="Loading…" subtitle="Just a moment.">
+        <SkeletonCard />
+      </PageShell>
     );
   }
 
-  if (!user) {
+  if (!me) {
     return (
-      <main className="min-h-screen text-gray-900">
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-        </div>
-
-        <div className="max-w-3xl mx-auto px-6 py-12">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
-            <div className="text-sm text-gray-600">Admin</div>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Please sign in</h1>
-            <p className="mt-2 text-gray-700">Log in to access the Ustad dashboard.</p>
-
-            <div className="mt-6 flex gap-3">
-              <Link
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
-                href="/login"
-              >
-                Go to login
-              </Link>
-              <Link
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
-                href="/"
-              >
-                Home
-              </Link>
-            </div>
+      <PageShell
+        title="Please sign in"
+        subtitle="You need to be signed in as the admin to manage students."
+        rightSlot={
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+          >
+            Home
+          </Link>
+        }
+      >
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-7 shadow-sm">
+          <p className="text-gray-700">
+            Go to login, then come back to the admin dashboard.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
+            >
+              Go to login
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
+            >
+              Back to Home
+            </Link>
           </div>
         </div>
-      </main>
+      </PageShell>
     );
   }
 
   if (!isAdmin) {
     return (
-      <main className="min-h-screen text-gray-900">
-        <div className="pointer-events-none fixed inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-        </div>
+      <PageShell
+        title="Access denied"
+        subtitle='This account is not marked as admin in Firestore. (It needs role: "admin")'
+        rightSlot={
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+          >
+            Home
+          </Link>
+        }
+      >
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-7 shadow-sm">
+          <div className="text-sm text-gray-600">Signed in as</div>
+          <div className="mt-1 font-semibold">{me.email}</div>
 
-        <div className="max-w-3xl mx-auto px-6 py-12">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
-            <div className="text-sm text-gray-600">Admin</div>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight">Not allowed</h1>
-            <p className="mt-2 text-gray-700">
-              This account is not an admin.
-            </p>
-
-            <div className="mt-6 flex gap-3">
-              <Link
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
-                href="/"
-              >
-                Home
-              </Link>
-              <Link
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
-                href="/my-progress"
-              >
-                My Progress
-              </Link>
-            </div>
+          <div className="mt-5 text-sm text-gray-700">
+            In Firestore → <code className="font-mono">users/{me.uid}</code> set{" "}
+            <code className="font-mono">role</code> to{" "}
+            <code className="font-mono">"admin"</code>.
           </div>
-        </div>
-      </main>
-    );
-  }
 
-  return (
-    <main className="min-h-screen text-gray-900">
-      {/* background */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-        <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/25 blur-3xl" />
-        <div className="absolute top-[-25%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/15 blur-3xl" />
-        <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/18 blur-3xl" />
-      </div>
-
-      <div className="max-w-3xl mx-auto px-6 sm:px-10 py-10">
-        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-lg">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-sm">
-                <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
-                <span className="text-gray-700">Ustad Dashboard</span>
-              </div>
-              <h1 className="mt-5 text-3xl sm:text-4xl font-semibold tracking-tight">
-                Enter student work
-              </h1>
-              <p className="mt-2 text-gray-700">
-                Select a student and log today’s work.
-              </p>
-            </div>
-
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/my-progress"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
+            >
+              My Progress
+            </Link>
             <Link
               href="/"
-              className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
             >
               Home
             </Link>
           </div>
+        </div>
+      </PageShell>
+    );
+  }
 
-          <div className="mt-8 grid gap-4">
-            <div className="rounded-3xl border border-gray-200 bg-white/70 p-5">
-              <div className="text-sm font-semibold text-gray-900 mb-2">
-                Student
+  return (
+    <PageShell
+      title="Admin Dashboard"
+      subtitle={`Select a student, then log their work for today (${today}).`}
+      rightSlot={
+        <Link
+          href="/"
+          className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+        >
+          Home
+        </Link>
+      }
+    >
+      <div className="grid gap-6">
+        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-7 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <div className="text-sm text-gray-600">Student selection</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">
+                Choose a student
               </div>
+              <div className="mt-1 text-sm text-gray-700">
+                No searching — just pick from the list.
+              </div>
+            </div>
 
+            <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Admin active
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3">
+            <label className="text-sm font-semibold text-gray-900">
+              Students
+            </label>
+
+            <div className="relative">
               <select
                 value={selectedUid}
                 onChange={(e) => setSelectedUid(e.target.value)}
-                className="w-full h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#9c7c38]/30"
+                className="w-full h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 pr-10 outline-none focus:ring-2 focus:ring-[#9c7c38]/30"
+                disabled={loadingStudents}
               >
                 {loadingStudents ? (
                   <option>Loading students…</option>
-                ) : students.length ? (
+                ) : students.length === 0 ? (
+                  <option>No students found</option>
+                ) : (
                   students.map((s) => (
                     <option key={s.uid} value={s.uid}>
                       {s.email}
                     </option>
                   ))
-                ) : (
-                  <option>No students found</option>
                 )}
               </select>
 
-              {selected && (
-                <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                  <Link
-                    href={`/admin/student/${selected.uid}`}
-                    className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
-                  >
-                    Log work →
-                  </Link>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                ▼
+              </div>
+            </div>
 
-                  <Link
-                    href={`/admin/student/${selected.uid}/overview`}
-                    className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-200 bg-white/70 hover:bg-white text-sm font-semibold"
-                  >
-                    View overview →
-                  </Link>
-                </div>
-              )}
+            {err ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {err}
+              </div>
+            ) : null}
+
+            <div className="mt-2 flex flex-col sm:flex-row gap-3">
+              <Link
+                href={selectedUid ? `/admin/student/${selectedUid}` : "/admin"}
+                className={`inline-flex items-center justify-center h-12 px-6 rounded-2xl text-sm font-semibold transition-colors shadow-sm ${
+                  selectedUid
+                    ? "bg-black text-white hover:bg-gray-900"
+                    : "bg-black/40 text-white cursor-not-allowed"
+                }`}
+                aria-disabled={!selectedUid}
+                onClick={(e) => {
+                  if (!selectedUid) e.preventDefault();
+                }}
+              >
+                Log work for student →
+              </Link>
+
+              <Link
+                href={
+                  selectedUid
+                    ? `/admin/student/${selectedUid}/overview`
+                    : "/admin"
+                }
+                className={`inline-flex items-center justify-center h-12 px-6 rounded-2xl border text-sm font-semibold transition-colors ${
+                  selectedUid
+                    ? "border-gray-200 bg-white/70 hover:bg-white"
+                    : "border-gray-200 bg-white/40 text-gray-500 cursor-not-allowed"
+                }`}
+                aria-disabled={!selectedUid}
+                onClick={(e) => {
+                  if (!selectedUid) e.preventDefault();
+                }}
+              >
+                View student overview
+              </Link>
             </div>
           </div>
+        </div>
 
-          <div className="mt-6 text-xs text-gray-500">
-            Tip: Students must sign up at least once so they appear here.
+        {/* Optional small footer note (clean + not boring) */}
+        <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-6 shadow-sm">
+          <div className="text-sm font-semibold text-gray-900">
+            Tip for faster workflow
           </div>
+          <p className="mt-1 text-sm text-gray-700">
+            Keep this page open on your phone. Select the student → log work →
+            save → next student.
+          </p>
         </div>
       </div>
-    </main>
+    </PageShell>
   );
 }
+
