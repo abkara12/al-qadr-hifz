@@ -35,10 +35,15 @@ type LogRow = {
   sabakDhorMistakes?: string;
   dhorMistakes?: string;
 
-  // ✅ NEW: reading quality (saved in logs)
+  // ✅ reading quality + optional notes (saved in logs)
   sabakReadQuality?: string;
+  sabakReadNotes?: string;
+
   sabakDhorReadQuality?: string;
+  sabakDhorReadNotes?: string;
+
   dhorReadQuality?: string;
+  dhorReadNotes?: string;
 };
 
 async function fetchLogs(uid: string): Promise<LogRow[]> {
@@ -52,6 +57,30 @@ function Badge({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur">
       {children}
     </span>
+  );
+}
+
+function ReadingCell({
+  quality,
+  notes,
+}: {
+  quality?: string;
+  notes?: string;
+}) {
+  const q = toText(quality).trim();
+  const n = toText(notes).trim();
+
+  if (!q && !n) return <span className="text-gray-400">—</span>;
+
+  return (
+    <div className="min-w-0">
+      <div className="font-medium text-gray-900 truncate">{q || "—"}</div>
+      {n ? (
+        <div className="mt-1 text-xs text-gray-600 leading-snug whitespace-pre-wrap break-words">
+          {n}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -248,14 +277,14 @@ export default function AdminStudentOverviewPage() {
               <p className="uppercase tracking-widest text-xs text-[#9c7c38]">History table</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">Student daily logs</h2>
               <p className="mt-2 text-gray-700">
-                All entries (newest → oldest). Reading quality is shown for each part.
+                All entries (newest → oldest). Reading notes show when provided.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Badge>Admin view</Badge>
-              <Badge>Sorted newest → oldest</Badge>
-              <Badge>Reading quality</Badge>
+              <Badge>Column separated</Badge>
+              <Badge>Reading notes</Badge>
             </div>
           </div>
 
@@ -279,30 +308,30 @@ export default function AdminStudentOverviewPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[1200px] w-full">
+                <table className="min-w-[1320px] w-full border-separate border-spacing-0">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-widest text-gray-500">
-                      <th className="pb-3 pr-4">Date</th>
+                    <tr className="text-left text-xs uppercase tracking-widest text-gray-600 bg-white/60">
+                      <Th>Date</Th>
 
-                      <th className="pb-3 pr-4">Sabak</th>
-                      <th className="pb-3 pr-4">Sabak Read</th>
+                      <Th>Sabak</Th>
+                      <Th>Sabak Reading</Th>
 
-                      <th className="pb-3 pr-4">Sabak Dhor</th>
-                      <th className="pb-3 pr-4">Sabak Dhor Read</th>
+                      <Th>Sabak Dhor</Th>
+                      <Th>Sabak Dhor Reading</Th>
 
-                      <th className="pb-3 pr-4">Sabak Dhor Mistakes</th>
+                      <Th>Sabak Dhor Mistakes</Th>
 
-                      <th className="pb-3 pr-4">Dhor</th>
-                      <th className="pb-3 pr-4">Dhor Read</th>
+                      <Th>Dhor</Th>
+                      <Th>Dhor Reading</Th>
 
-                      <th className="pb-3 pr-4">Dhor Mistakes</th>
+                      <Th>Dhor Mistakes</Th>
 
-                      <th className="pb-3 pr-4">Weekly Goal</th>
-                      <th className="pb-3">Goal Status</th>
+                      <Th>Weekly Goal</Th>
+                      <Th last>Goal Status</Th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody>
                     {rows.map((r) => {
                       const g = num(r.weeklyGoal);
                       const s = num(r.sabak);
@@ -310,36 +339,39 @@ export default function AdminStudentOverviewPage() {
 
                       return (
                         <tr key={r.id} className="text-sm">
-                          <td className="py-4 pr-4 font-medium text-gray-900">
-                            {r.dateKey ?? r.id}
-                          </td>
+                          <Td strong>{r.dateKey ?? r.id}</Td>
 
-                          <td className="py-4 pr-4 text-gray-800">{toText(r.sabak) || "—"}</td>
-                          <td className="py-4 pr-4 text-gray-800">
-                            {toText(r.sabakReadQuality) || "—"}
-                          </td>
+                          <Td>{toText(r.sabak) || "—"}</Td>
+                          <Td>
+                            <ReadingCell
+                              quality={r.sabakReadQuality}
+                              notes={r.sabakReadNotes}
+                            />
+                          </Td>
 
-                          <td className="py-4 pr-4 text-gray-800">{toText(r.sabakDhor) || "—"}</td>
-                          <td className="py-4 pr-4 text-gray-800">
-                            {toText(r.sabakDhorReadQuality) || "—"}
-                          </td>
+                          <Td>{toText(r.sabakDhor) || "—"}</Td>
+                          <Td>
+                            <ReadingCell
+                              quality={r.sabakDhorReadQuality}
+                              notes={r.sabakDhorReadNotes}
+                            />
+                          </Td>
 
-                          <td className="py-4 pr-4 text-gray-800">
-                            {toText(r.sabakDhorMistakes) || "—"}
-                          </td>
+                          <Td>{toText(r.sabakDhorMistakes) || "—"}</Td>
 
-                          <td className="py-4 pr-4 text-gray-800">{toText(r.dhor) || "—"}</td>
-                          <td className="py-4 pr-4 text-gray-800">
-                            {toText(r.dhorReadQuality) || "—"}
-                          </td>
+                          <Td>{toText(r.dhor) || "—"}</Td>
+                          <Td>
+                            <ReadingCell
+                              quality={r.dhorReadQuality}
+                              notes={r.dhorReadNotes}
+                            />
+                          </Td>
 
-                          <td className="py-4 pr-4 text-gray-800">
-                            {toText(r.dhorMistakes) || "—"}
-                          </td>
+                          <Td>{toText(r.dhorMistakes) || "—"}</Td>
 
-                          <td className="py-4 pr-4 text-gray-800">{toText(r.weeklyGoal) || "—"}</td>
+                          <Td>{toText(r.weeklyGoal) || "—"}</Td>
 
-                          <td className="py-4">
+                          <Td last>
                             {g > 0 ? (
                               <span
                                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
@@ -358,7 +390,7 @@ export default function AdminStudentOverviewPage() {
                             ) : (
                               <span className="text-xs text-gray-500">No goal set</span>
                             )}
-                          </td>
+                          </Td>
                         </tr>
                       );
                     })}
@@ -370,6 +402,42 @@ export default function AdminStudentOverviewPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+/* ---------------- table UI helpers (column separation) ---------------- */
+function Th({ children, last }: { children: React.ReactNode; last?: boolean }) {
+  return (
+    <th
+      className={[
+        "sticky top-0 pb-3 pt-3 px-4 border-b border-gray-200 text-left",
+        last ? "" : "border-r border-gray-200/70",
+      ].join(" ")}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  strong,
+  last,
+}: {
+  children: React.ReactNode;
+  strong?: boolean;
+  last?: boolean;
+}) {
+  return (
+    <td
+      className={[
+        "align-top py-4 px-4 border-b border-gray-200",
+        last ? "" : "border-r border-gray-200/70",
+        strong ? "font-medium text-gray-900" : "text-gray-800",
+      ].join(" ")}
+    >
+      {children}
+    </td>
   );
 }
 
