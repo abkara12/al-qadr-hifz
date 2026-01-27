@@ -163,10 +163,6 @@ export default function LoginPage() {
                   Sign Up
                 </Link>
               </div>
-
-              <div className="mt-4 text-center text-xs text-gray-500">
-                Admin accounts are redirected to <span className="font-semibold">/admin</span>.
-              </div>
             </div>
           </div>
         </div>

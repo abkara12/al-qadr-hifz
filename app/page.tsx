@@ -396,7 +396,7 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="text-sm font-semibold leading-tight">Al Qadr</div>
-                    <div className="text-xs text-gray-600">Hifz Class • Menu</div>
+                    <div className="text-xs text-gray-600">Hifdh Class • Menu</div>
                   </div>
                 </div>
 
@@ -491,7 +491,7 @@ export default function Home() {
                 <div className="rounded-3xl border border-gray-200 bg-white/60 px-5 py-4 shadow-sm">
                   <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Quick tip</div>
                   <div className="mt-1 text-sm text-gray-700">
-                    Add this site to your home screen for an app-like experience.
+                    Add this site to your home screen.
                   </div>
                 </div>
 
@@ -517,7 +517,7 @@ export default function Home() {
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/60 backdrop-blur px-4 py-2 text-sm">
               <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
-              <span className="text-gray-700">Northcliff • Hifz Class</span>
+              <span className="text-gray-700">Northcliff • Hifdh Class</span>
             </div>
 
             <h1 className="mt-6 text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
@@ -528,7 +528,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-6 text-lg sm:text-xl text-gray-700 leading-relaxed max-w-2xl">
-              Join the Al Qadr Hifz Program in Northcliff — a journey of memorisation,
+              Join the Al Qadr Hifdh Program in Northcliff — a journey of memorisation,
               discipline, and spiritual growth. Track your daily Sabak, Dhor, Sabak Dhor and weekly
               goals — all in one place.
             </p>
@@ -688,12 +688,12 @@ export default function Home() {
             </p>
 
             <h2 className="text-4xl font-semibold tracking-tight">
-              A Peaceful & Disciplined Environment for Hifz
+              A Peaceful & Disciplined Environment for Hifdh
             </h2>
 
             <div className="mt-6 grid md:grid-cols-2 gap-8">
               <p className="text-gray-700 leading-relaxed text-lg">
-                Located in Northcliff, the Al Qadr Hifz class offers a peaceful and disciplined
+                Located in Northcliff, the Al Qadr Hifdh class offers a peaceful and disciplined
                 environment where students build a deep and lasting connection with the Qur’an.
               </p>
               <p className="text-gray-700 leading-relaxed text-lg">
@@ -792,7 +792,7 @@ export default function Home() {
 
           <div className="grid gap-4">
             <FAQItem
-              question="Who can join the Al Qadr Hifz Class?"
+              question="Who can join the Al Qadr Hifdh Class?"
               answer="Students of all ages and levels are welcome. Beginners receive step-by-step guidance, while advanced students continue to strengthen memorisation and retention."
             />
             <FAQItem
@@ -801,7 +801,7 @@ export default function Home() {
             />
             <FAQItem
               question="Who teaches the class?"
-              answer="Ml Shaheed Bhabha, a dedicated and experienced teacher, provides personalised guidance and oversight to every student."
+              answer="Ml Shaheed Bhabha, a dedicated and experienced teacher with over 4 years of experience, provides personalised guidance and oversight to every student."
             />
             <FAQItem
               question="How do students submit their daily progress?"
@@ -824,7 +824,7 @@ export default function Home() {
                   Ready to begin?
                 </p>
                 <h2 className="mt-2 text-4xl font-semibold tracking-tight">
-                  Enrol and start tracking your Hifz journey today
+                  Enrol and start tracking your Hifdh journey today
                 </h2>
                 <p className="mt-4 text-gray-700 text-lg leading-relaxed">
                   A focused system for daily Sabak, consistent Dhor, and weekly targets — built for
@@ -863,7 +863,7 @@ export default function Home() {
                 </div>
                 <div>
                   <div className="font-semibold text-lg">Al Qadr</div>
-                  <div className="text-sm text-gray-600">Hifz Class • Northcliff</div>
+                  <div className="text-sm text-gray-600">Hifdh Class • Northcliff</div>
                 </div>
               </div>
 
@@ -980,7 +980,7 @@ export default function Home() {
           <div className="my-10 h-px bg-gray-200" />
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-            <p>© {new Date().getFullYear()} Al Qadr Hifz Class. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Al Qadr Hifdh Class. All rights reserved.</p>
 
             <div className="flex items-center gap-4">
               <a href="#top" className="hover:text-black">

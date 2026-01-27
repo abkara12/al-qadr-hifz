@@ -258,9 +258,6 @@ export default function AdminStudentOverviewPage() {
             <div>
               <p className="uppercase tracking-widest text-xs text-[#9c7c38]">History table</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">Student daily logs</h2>
-              <p className="mt-2 text-gray-700">
-                Same table layout as the student’s account view (newest → oldest).
-              </p>
             </div>
 
             <div className="flex flex-wrap gap-2">

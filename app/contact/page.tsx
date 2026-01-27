@@ -240,7 +240,7 @@ export default function ContactPage() {
                 />
                 <div className="absolute inset-0 grid place-items-center">
                   <div className="rounded-2xl border border-gray-200 bg-white/75 backdrop-blur px-5 py-4 shadow-md text-center">
-                    <div className="text-sm font-semibold">Al Qadr Hifz Class</div>
+                    <div className="text-sm font-semibold">Al Qadr Hifdh Class</div>
                     <div className="mt-1 text-xs text-gray-600">
                       Northcliff • Randburg
                     </div>

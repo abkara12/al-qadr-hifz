@@ -288,9 +288,6 @@ export default function AdminPage() {
               <div className="mt-1 text-xl font-semibold tracking-tight">
                 Choose a student
               </div>
-              <div className="mt-1 text-sm text-gray-700">
-                No searching — just pick from the list.
-              </div>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">

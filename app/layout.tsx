@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Al Qadr Hifz Class",
-  description: "Student portal for Hifz progress tracking",
+  title: "Al Qadr Hifdh Class",
+  description: "Student portal for Hifdh progress tracking",
 
   // ✅ Make sure this matches the file in /public (see notes below)
   manifest: "/manifest.webmanifest",

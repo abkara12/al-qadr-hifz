@@ -75,7 +75,9 @@ function MiniInfo({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white/70 px-4 py-3">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-gray-900 break-words">{value}</div>
+      <div className="mt-1 text-sm font-semibold text-gray-900 break-words">
+        {value}
+      </div>
     </div>
   );
 }
@@ -144,9 +146,7 @@ export default function MyProgressPage() {
         setWeeklyGoalCompletedDateKey(toText(data.weeklyGoalCompletedDateKey));
 
         const dur = (data as any).weeklyGoalDurationDays;
-        setWeeklyGoalDurationDays(
-          typeof dur === "number" ? dur : dur ? Number(dur) : null
-        );
+        setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
       }
 
       // Load today's log if exists (users/{uid}/logs/{dateKey})
@@ -192,13 +192,6 @@ export default function MyProgressPage() {
         if (isNewWeekGoal) {
           nextWeekKey = currentWeekKey;
           nextStartKey = dateKey;
-          // DO NOT clear completed meta here (ustad controls completion),
-          // but typically completion belongs to that goal; if you want strict reset each week, uncomment:
-          // nextCompletedKey = "";
-          // nextDuration = null;
-        } else {
-          // same week → lock edits
-          // If they tried changing, just keep current value (goalLockedThisWeek disables input anyway)
         }
       }
 
@@ -268,8 +261,8 @@ export default function MyProgressPage() {
     return (
       <main className="min-h-screen">
         <FancyBg />
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-10 py-10 sm:py-16">
+          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-sm">
             Loading…
           </div>
         </div>
@@ -281,13 +274,13 @@ export default function MyProgressPage() {
     return (
       <main className="min-h-screen">
         <FancyBg />
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-10 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-10 py-10 sm:py-16">
+          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 sm:p-10 shadow-sm">
             <h1 className="text-3xl font-semibold tracking-tight">Please sign in</h1>
             <p className="mt-3 text-gray-700">
               You need to be signed in to submit your daily progress.
             </p>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/login"
                 className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
@@ -311,58 +304,71 @@ export default function MyProgressPage() {
     <main className="min-h-screen text-gray-900">
       <FancyBg />
 
-      <header className="max-w-6xl mx-auto px-6 sm:px-10 py-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-black text-white grid place-items-center shadow-sm">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-              <path
-                d="M7 4h10a2 2 0 012 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 012-2z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinejoin="round"
-              />
-            </svg>
+      {/* ✅ mobile-friendly header */}
+      <header className="max-w-6xl mx-auto px-4 sm:px-10 py-6 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-11 w-11 rounded-2xl bg-black text-white grid place-items-center shadow-sm flex-none">
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                <path
+                  d="M7 4h10a2 2 0 012 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 012-2z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm text-gray-600">My Progress</div>
+              <div className="text-xl font-semibold tracking-tight">Daily Submission</div>
+            </div>
           </div>
-          <div>
-            <div className="text-sm text-gray-600">My Progress</div>
-            <div className="text-xl font-semibold tracking-tight">Daily Submission</div>
-          </div>
-        </div>
 
-        <div className="hidden sm:flex items-center gap-3">
-          <Badge>Today: {dateKey}</Badge>
-          <Link
-            href="/overview"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
-          >
-            View Overview
-          </Link>
+          {/* on desktop */}
+          <div className="hidden sm:flex items-center gap-3">
+            <Badge>Today: {dateKey}</Badge>
+            <Link
+              href="/overview"
+              className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
+            >
+              View Overview
+            </Link>
+          </div>
+
+          {/* on mobile */}
+          <div className="sm:hidden flex items-center justify-between gap-3">
+            <Badge>Today: {dateKey}</Badge>
+            <Link href="/overview" className="text-sm font-semibold text-gray-900 underline">
+              Overview
+            </Link>
+          </div>
         </div>
       </header>
 
-      <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
-        <div className="grid lg:grid-cols-12 gap-8">
+      <section className="max-w-6xl mx-auto px-4 sm:px-10 pb-14 sm:pb-16">
+        {/* ✅ Better mobile layout: single column, centered; right column only on lg */}
+        <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
           {/* left: form */}
           <div className="lg:col-span-7">
             <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur shadow-sm overflow-hidden">
-              <div className="p-8 border-b border-gray-200">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="p-6 sm:p-8 border-b border-gray-200">
+                <div className="flex flex-col gap-4">
                   <div>
                     <p className="uppercase tracking-widest text-xs text-[#9c7c38]">
                       Submit for {dateKey}
                     </p>
-                    <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+                    <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight">
                       Enter today’s Hifz work
                     </h1>
                     <p className="mt-3 text-gray-700">
-                      Record your Sabak, Sabak Dhor, Dhor, mistakes, and weekly goal.
-                      This saves into your personal history table.
+                      Record your Sabak, Sabak Dhor, Dhor, mistakes, and weekly goal. This saves
+                      into your personal history table.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex">
                     <span
-                      className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium border ${
+                      className={`inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium border ${
                         goalAlreadyCompleted
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                           : goalReachedToday
@@ -372,7 +378,9 @@ export default function MyProgressPage() {
                     >
                       <span
                         className={`h-2 w-2 rounded-full ${
-                          goalAlreadyCompleted || goalReachedToday ? "bg-emerald-500" : "bg-[#9c7c38]"
+                          goalAlreadyCompleted || goalReachedToday
+                            ? "bg-emerald-500"
+                            : "bg-[#9c7c38]"
                         }`}
                       />
                       {goalAlreadyCompleted
@@ -387,7 +395,7 @@ export default function MyProgressPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleSave} className="p-8 grid gap-5">
+              <form onSubmit={handleSave} className="p-6 sm:p-8 grid gap-5">
                 <Field
                   label="Sabak"
                   hint="Example: 2 pages / 1 ruku / 5 lines"
@@ -437,7 +445,9 @@ export default function MyProgressPage() {
                   <div className="mt-4 grid gap-4">
                     <label className="grid gap-2">
                       <div className="flex items-end justify-between gap-4">
-                        <span className="text-sm font-semibold text-gray-900">Weekly Sabak Goal</span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          Weekly Sabak Goal
+                        </span>
                         <span className="text-xs text-gray-500">
                           {goalLockedThisWeek ? "Locked (already set this week)" : "Set it now"}
                         </span>
@@ -452,6 +462,7 @@ export default function MyProgressPage() {
                       />
                     </label>
 
+                    {/* ✅ mobile-first: 1 col; becomes 3 cols on sm */}
                     <div className="grid gap-2 sm:grid-cols-3">
                       <MiniInfo label="Started" value={weeklyGoalStartDateKey || "—"} />
                       <MiniInfo label="Completed" value={weeklyGoalCompletedDateKey || "—"} />
@@ -470,16 +481,17 @@ export default function MyProgressPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                {/* ✅ mobile save row: stack nicely */}
+                <div className="pt-2 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                   <button
                     disabled={saving}
                     type="submit"
-                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-60"
+                    className="inline-flex items-center justify-center h-12 w-full sm:w-auto px-8 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900 disabled:opacity-60"
                   >
                     {saving ? "Saving…" : "Save Today"}
                   </button>
 
-                  <div className="flex items-center gap-3">
+                  <div className="min-h-[20px]">
                     {savedMsg ? (
                       <span className="text-sm text-gray-700">{savedMsg}</span>
                     ) : (
@@ -490,7 +502,7 @@ export default function MyProgressPage() {
                   </div>
                 </div>
 
-                <div className="sm:hidden mt-2">
+                <div className="sm:hidden">
                   <Link
                     href="/overview"
                     className="inline-flex items-center justify-center h-11 w-full rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
@@ -504,12 +516,12 @@ export default function MyProgressPage() {
 
           {/* right: tips + preview */}
           <div className="lg:col-span-5 grid gap-6">
-            <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white/80 to-white/40 backdrop-blur p-8 shadow-lg">
+            <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white/80 to-white/40 backdrop-blur p-6 sm:p-8 shadow-lg">
               <p className="uppercase tracking-widest text-xs text-[#9c7c38]">Tip</p>
               <h3 className="mt-2 text-xl font-semibold tracking-tight">Keep entries consistent</h3>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                For best tracking, try to use the same unit (pages/lines/ruku) each day.
-                The goal indicator reads the first number you type.
+                For best tracking, try to use the same unit (pages/lines/ruku) each day. The goal
+                indicator reads the first number you type.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-2">
@@ -519,7 +531,7 @@ export default function MyProgressPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-200 bg-black text-white p-8 shadow-xl relative overflow-hidden">
+            <div className="rounded-3xl border border-gray-200 bg-black text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
               <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#9c7c38]/25 blur-2xl" />
               <p className="text-sm uppercase tracking-widest text-white/70">Weekly Goal</p>
               <h3 className="mt-2 text-2xl font-semibold">Progress Indicator</h3>
@@ -534,9 +546,7 @@ export default function MyProgressPage() {
                     className="h-full rounded-full bg-white/80"
                     style={{
                       width:
-                        goalNum > 0
-                          ? `${Math.min(100, (sabakNum / goalNum) * 100)}%`
-                          : "0%",
+                        goalNum > 0 ? `${Math.min(100, (sabakNum / goalNum) * 100)}%` : "0%",
                     }}
                   />
                 </div>
@@ -548,7 +558,7 @@ export default function MyProgressPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
+            <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-sm">
               <h3 className="text-lg font-semibold tracking-tight">Quick links</h3>
               <div className="mt-4 grid gap-3">
                 <Link
@@ -586,15 +596,16 @@ function Field({
 }) {
   return (
     <label className="grid gap-2">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 sm:gap-4">
         <span className="text-sm font-semibold text-gray-900">{label}</span>
         <span className="text-xs text-gray-500">{hint}</span>
       </div>
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="h-12 rounded-2xl border border-gray-200 bg-white/80 backdrop-blur px-4 text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-[#9c7c38]/30"
+        className="h-12 w-full rounded-2xl border border-gray-200 bg-white/80 backdrop-blur px-4 text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-[#9c7c38]/30"
         placeholder="Type here…"
+        inputMode="text"
       />
     </label>
   );
@@ -603,20 +614,21 @@ function Field({
 function FancyBg() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-      <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/30 blur-3xl" />
-      <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/20 blur-3xl" />
-      <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#f6f3ea] via-[#fbfaf6] to-white" />
+      <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
+      <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/16 blur-3xl" />
+      <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#2f6f6f]/12 blur-3xl" />
+
       <div
-        className="absolute inset-0 opacity-[0.18]"
+        className="absolute inset-0 opacity-[0.10]"
         style={{
           backgroundImage:
-            "linear-gradient(45deg, rgba(0,0,0,0.18) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.18) 1px, transparent 1px)",
-          backgroundSize: "72px 72px",
-          backgroundPosition: "0 0, 36px 36px",
+            "linear-gradient(0deg, rgba(0,0,0,0.20) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.20) 1px, transparent 1px)",
+          backgroundSize: "120px 120px",
+          backgroundPosition: "0 0",
         }}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_15%,transparent_55%,rgba(0,0,0,0.12))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_12%,transparent_55%,rgba(0,0,0,0.10))]" />
     </div>
   );
 }
