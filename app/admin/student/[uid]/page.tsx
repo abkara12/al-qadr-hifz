@@ -1,3 +1,4 @@
+/* app/admin/student/[uid]/page.tsx */
 "use client";
 
 import Link from "next/link";
@@ -24,7 +25,6 @@ function getDateKeySA() {
 }
 
 function parseDateKey(dateKey: string) {
-  // dateKey is YYYY-MM-DD
   const [y, m, d] = dateKey.split("-").map((x) => Number(x));
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
@@ -34,14 +34,12 @@ function diffDaysInclusive(startKey: string, endKey: string) {
   const b = parseDateKey(endKey);
   const ms = b.getTime() - a.getTime();
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  return Math.max(0, days) + 1; // inclusive
+  return Math.max(0, days) + 1;
 }
 
-// ISO week key like "2026-W05"
 function isoWeekKeyFromDateKey(dateKey: string) {
   const d = parseDateKey(dateKey);
   const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  // ISO week algorithm
   const day = (date.getDay() + 6) % 7; // Mon=0..Sun=6
   date.setDate(date.getDate() - day + 3); // Thu of current week
   const firstThursday = new Date(date.getFullYear(), 0, 4);
@@ -62,10 +60,6 @@ function isoWeekKeyFromDateKey(dateKey: string) {
 function toText(v: unknown) {
   if (v === null || v === undefined) return "";
   return typeof v === "string" ? v : String(v);
-}
-
-function toBool(v: unknown) {
-  return v === true || v === "true" || v === 1 || v === "1";
 }
 
 /** -------------------- UI shell -------------------- */
@@ -115,9 +109,7 @@ function Shell({
             ) : null}
           </div>
 
-          {rightSlot ? (
-            <div className="w-full sm:w-auto">{rightSlot}</div>
-          ) : null}
+          {rightSlot ? <div className="w-full sm:w-auto">{rightSlot}</div> : null}
         </div>
 
         <div className="mt-7 sm:mt-8">{children}</div>
@@ -140,6 +132,15 @@ function LoadingCard() {
   );
 }
 
+/** -------------------- Reading quality options -------------------- */
+const READING_OPTIONS = [
+  { value: "", label: "Select…" },
+  { value: "Excellent", label: "Excellent" },
+  { value: "Good", label: "Good" },
+  { value: "Average", label: "Average" },
+  { value: "Poor", label: "Poor" },
+];
+
 /** -------------------- Page -------------------- */
 export default function AdminStudentPage() {
   const params = useParams<{ uid: string }>();
@@ -155,6 +156,18 @@ export default function AdminStudentPage() {
   const [sabak, setSabak] = useState("");
   const [sabakDhor, setSabakDhor] = useState("");
   const [dhor, setDhor] = useState("");
+
+  // ✅ reading quality fields (NEW)
+  const [sabakReadQuality, setSabakReadQuality] = useState("");
+  const [sabakReadNotes, setSabakReadNotes] = useState("");
+
+  const [sabakDhorReadQuality, setSabakDhorReadQuality] = useState("");
+  const [sabakDhorReadNotes, setSabakDhorReadNotes] = useState("");
+
+  const [dhorReadQuality, setDhorReadQuality] = useState("");
+  const [dhorReadNotes, setDhorReadNotes] = useState("");
+
+  // mistakes fields (keep, but no special red logic anywhere)
   const [sabakDhorMistakes, setSabakDhorMistakes] = useState("");
   const [dhorMistakes, setDhorMistakes] = useState("");
 
@@ -204,7 +217,6 @@ export default function AdminStudentPage() {
 
   useEffect(() => {
     async function loadStudent() {
-      // profile snapshot + weekly goal meta
       const sDoc = await getDoc(doc(db, "users", studentUid));
       if (sDoc.exists()) {
         const data = sDoc.data() as any;
@@ -217,16 +229,24 @@ export default function AdminStudentPage() {
         setWeeklyGoalCompletedDateKey(toText(data.weeklyGoalCompletedDateKey));
 
         const dur = data.weeklyGoalDurationDays;
-        setWeeklyGoalDurationDays(
-          typeof dur === "number" ? dur : dur ? Number(dur) : null
-        );
+        setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
 
-        // seed daily fields with "current" snapshot
+        // seed with snapshot
         setSabak(toText(data.currentSabak));
         setSabakDhor(toText(data.currentSabakDhor));
         setDhor(toText(data.currentDhor));
         setSabakDhorMistakes(toText(data.currentSabakDhorMistakes));
         setDhorMistakes(toText(data.currentDhorMistakes));
+
+        // ✅ seed reading snapshot (NEW)
+        setSabakReadQuality(toText(data.currentSabakReadQuality));
+        setSabakReadNotes(toText(data.currentSabakReadNotes));
+
+        setSabakDhorReadQuality(toText(data.currentSabakDhorReadQuality));
+        setSabakDhorReadNotes(toText(data.currentSabakDhorReadNotes));
+
+        setDhorReadQuality(toText(data.currentDhorReadQuality));
+        setDhorReadNotes(toText(data.currentDhorReadNotes));
       }
 
       // today's log overrides if exists
@@ -239,7 +259,16 @@ export default function AdminStudentPage() {
         setSabakDhorMistakes(toText(d.sabakDhorMistakes));
         setDhorMistakes(toText(d.dhorMistakes));
 
-        // allow reading weekly goal from log snapshot too (optional)
+        // ✅ reading fields from today log (NEW)
+        setSabakReadQuality(toText(d.sabakReadQuality));
+        setSabakReadNotes(toText(d.sabakReadNotes));
+
+        setSabakDhorReadQuality(toText(d.sabakDhorReadQuality));
+        setSabakDhorReadNotes(toText(d.sabakDhorReadNotes));
+
+        setDhorReadQuality(toText(d.dhorReadQuality));
+        setDhorReadNotes(toText(d.dhorReadNotes));
+
         if (!weeklyGoal) setWeeklyGoal(toText(d.weeklyGoal));
       }
     }
@@ -263,11 +292,7 @@ export default function AdminStudentPage() {
       let nextCompletedKey = weeklyGoalCompletedDateKey;
       let nextDuration = weeklyGoalDurationDays;
 
-      // If goal is empty, don't create meta
-      if (!nextGoal) {
-        // leave as-is (some people might want blank)
-      } else {
-        // If goal was never set, or set in a different week, allow setting (resets completion)
+      if (nextGoal) {
         const isNewWeekGoal = !nextWeekKey || nextWeekKey !== currentWeekKey;
         if (isNewWeekGoal) {
           nextWeekKey = currentWeekKey;
@@ -275,18 +300,8 @@ export default function AdminStudentPage() {
           nextCompletedKey = "";
           nextDuration = null;
           setMarkGoalCompleted(false);
-        } else {
-          // Same week: lock changes
-          // (We still allow it to be saved as-is without changing the text.)
-          // If someone changed the text, revert to existing to enforce rule.
-          // If you prefer: show an error instead.
-          if (goalLockedThisWeek) {
-            // keep as typed if same value; otherwise enforce lock
-            // easiest enforcement: do nothing (it will save same value anyway)
-          }
         }
 
-        // Completion (only if not already completed)
         if (markGoalCompleted && !nextCompletedKey) {
           const startKey = nextStartKey || dateKey;
           nextCompletedKey = dateKey;
@@ -300,13 +315,22 @@ export default function AdminStudentPage() {
         {
           dateKey,
           createdAt: serverTimestamp(),
+
           sabak,
           sabakDhor,
           dhor,
+
+          // ✅ reading quality (NEW)
+          sabakReadQuality,
+          sabakReadNotes,
+          sabakDhorReadQuality,
+          sabakDhorReadNotes,
+          dhorReadQuality,
+          dhorReadNotes,
+
           sabakDhorMistakes,
           dhorMistakes,
 
-          // include weekly goal snapshot for the day
           weeklyGoal: nextGoal,
           weeklyGoalWeekKey: nextWeekKey || null,
           weeklyGoalStartDateKey: nextStartKey || null,
@@ -324,19 +348,27 @@ export default function AdminStudentPage() {
       await setDoc(
         doc(db, "users", studentUid),
         {
-          // weekly goal meta on user
           weeklyGoal: nextGoal,
           weeklyGoalWeekKey: nextWeekKey || null,
           weeklyGoalStartDateKey: nextStartKey || null,
           weeklyGoalCompletedDateKey: nextCompletedKey || null,
           weeklyGoalDurationDays: nextDuration ?? null,
 
-          // current snapshot
           currentSabak: sabak,
           currentSabakDhor: sabakDhor,
           currentDhor: dhor,
+
+          // ✅ reading snapshot (NEW)
+          currentSabakReadQuality: sabakReadQuality,
+          currentSabakReadNotes: sabakReadNotes,
+          currentSabakDhorReadQuality: sabakDhorReadQuality,
+          currentSabakDhorReadNotes: sabakDhorReadNotes,
+          currentDhorReadQuality: dhorReadQuality,
+          currentDhorReadNotes: dhorReadNotes,
+
           currentSabakDhorMistakes: sabakDhorMistakes,
           currentDhorMistakes: dhorMistakes,
+
           updatedAt: serverTimestamp(),
           lastUpdatedBy: me?.uid ?? null,
         },
@@ -424,7 +456,6 @@ export default function AdminStudentPage() {
       }
     >
       <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-5 sm:p-8 shadow-sm">
-        {/* status row */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 w-fit">
             <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
@@ -450,16 +481,104 @@ export default function AdminStudentPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSave} className="mt-6 grid gap-4">
-          <Field label="Sabak" value={sabak} setValue={setSabak} hint="Example: 2 pages / 1 ruku / 5 lines" />
-          <Field label="Sabak Dhor" value={sabakDhor} setValue={setSabakDhor} hint="Revision for current sabak" />
+        <form onSubmit={handleSave} className="mt-6 grid gap-5">
+          {/* Sabak */}
+          <div className="rounded-3xl border border-gray-200 bg-white/60 p-5 sm:p-6">
+            <div className="text-sm font-semibold text-gray-900">Sabak</div>
+            <div className="mt-4 grid gap-4">
+              <Field
+                label="Sabak amount"
+                value={sabak}
+                setValue={setSabak}
+                hint="Example: 2 pages / 1 ruku / 5 lines"
+              />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Sabak Dhor Mistakes" value={sabakDhorMistakes} setValue={setSabakDhorMistakes} hint="Number" />
-            <Field label="Dhor Mistakes" value={dhorMistakes} setValue={setDhorMistakes} hint="Number" />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <SelectField
+                  label="How did the student read Sabak?"
+                  value={sabakReadQuality}
+                  setValue={setSabakReadQuality}
+                  options={READING_OPTIONS}
+                />
+                <Field
+                  label="Sabak reading notes (optional)"
+                  value={sabakReadNotes}
+                  setValue={setSabakReadNotes}
+                  hint="Short notes: fluency, tajweed, stops, etc."
+                />
+              </div>
+            </div>
           </div>
 
-          <Field label="Dhor" value={dhor} setValue={setDhor} hint="Older revision" />
+          {/* Sabak Dhor */}
+          <div className="rounded-3xl border border-gray-200 bg-white/60 p-5 sm:p-6">
+            <div className="text-sm font-semibold text-gray-900">Sabak Dhor</div>
+            <div className="mt-4 grid gap-4">
+              <Field
+                label="Sabak Dhor amount"
+                value={sabakDhor}
+                setValue={setSabakDhor}
+                hint="Revision for current sabak"
+              />
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <SelectField
+                  label="How did the student read Sabak Dhor?"
+                  value={sabakDhorReadQuality}
+                  setValue={setSabakDhorReadQuality}
+                  options={READING_OPTIONS}
+                />
+                <Field
+                  label="Sabak Dhor reading notes (optional)"
+                  value={sabakDhorReadNotes}
+                  setValue={setSabakDhorReadNotes}
+                  hint="Short notes"
+                />
+              </div>
+
+              <Field
+                label="Sabak Dhor mistakes"
+                value={sabakDhorMistakes}
+                setValue={setSabakDhorMistakes}
+                hint="Number"
+              />
+            </div>
+          </div>
+
+          {/* Dhor */}
+          <div className="rounded-3xl border border-gray-200 bg-white/60 p-5 sm:p-6">
+            <div className="text-sm font-semibold text-gray-900">Dhor</div>
+            <div className="mt-4 grid gap-4">
+              <Field
+                label="Dhor amount"
+                value={dhor}
+                setValue={setDhor}
+                hint="Older revision"
+              />
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <SelectField
+                  label="How did the student read Dhor?"
+                  value={dhorReadQuality}
+                  setValue={setDhorReadQuality}
+                  options={READING_OPTIONS}
+                />
+                <Field
+                  label="Dhor reading notes (optional)"
+                  value={dhorReadNotes}
+                  setValue={setDhorReadNotes}
+                  hint="Short notes"
+                />
+              </div>
+
+              <Field
+                label="Dhor mistakes"
+                value={dhorMistakes}
+                setValue={setDhorMistakes}
+                hint="Number"
+              />
+            </div>
+          </div>
 
           {/* Weekly goal block */}
           <div className="rounded-3xl border border-gray-200 bg-white/70 p-5 sm:p-6">
@@ -467,7 +586,7 @@ export default function AdminStudentPage() {
               <div>
                 <div className="text-sm font-semibold text-gray-900">Weekly Goal</div>
                 <div className="mt-1 text-sm text-gray-700">
-                  Set once per week. When the student finishes it, tick “Completed” and it will calculate how long it took.
+                  Set once per week. When finished, tick “Completed” to calculate duration.
                 </div>
               </div>
 
@@ -497,15 +616,17 @@ export default function AdminStudentPage() {
               <div className="grid gap-2 sm:grid-cols-3">
                 <MiniInfo label="Started" value={weeklyGoalStartDateKey || "—"} />
                 <MiniInfo label="Completed" value={weeklyGoalCompletedDateKey || "—"} />
-                <MiniInfo label="Duration" value={weeklyGoalDurationDays ? `${weeklyGoalDurationDays} day(s)` : "—"} />
+                <MiniInfo
+                  label="Duration"
+                  value={weeklyGoalDurationDays ? `${weeklyGoalDurationDays} day(s)` : "—"}
+                />
               </div>
 
-              {/* Complete toggle */}
               <label className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white/70 px-4 py-4">
                 <div>
                   <div className="text-sm font-semibold text-gray-900">Weekly Goal Completed</div>
                   <div className="mt-1 text-xs text-gray-600">
-                    Tick this only when the student has finished their weekly goal.
+                    Tick only when the student has finished their weekly goal.
                   </div>
                 </div>
 
@@ -565,6 +686,38 @@ function Field({
         className="h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#9c7c38]/30"
         placeholder="Type here…"
       />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  setValue,
+  options,
+}: {
+  label: string;
+  value: string;
+  setValue: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label className="grid gap-2">
+      <div className="flex items-end justify-between gap-4">
+        <span className="text-sm font-semibold text-gray-900">{label}</span>
+        <span className="text-xs text-gray-500">Select</span>
+      </div>
+      <select
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#9c7c38]/30"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
