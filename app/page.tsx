@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "./lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "./lib/firebase";
 
 /* ✅ Icons */
 function MenuIcon() {
@@ -208,8 +209,24 @@ export default function Home() {
 
   // ✅ Track auth state to show correct links
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      setIsAdmin(false);
+
+      if (!u) return;
+
+      try {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        const role = snap.exists() ? (snap.data() as any).role : null;
+        setIsAdmin(role === "admin");
+      } catch {
+        setIsAdmin(false);
+      }
+    });
+
     return () => unsub();
   }, []);
 
@@ -234,25 +251,32 @@ export default function Home() {
 
   return (
     <main id="top" className="min-h-screen bg-transparent text-gray-900">
-      {/* FANCY BACKGROUND */}
+      {/* ✅ MORE MODERN BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
+        {/* base */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f6f3ea] via-[#fbfaf6] to-white" />
 
-        <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/30 blur-3xl" />
-        <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/20 blur-3xl" />
-        <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
+        {/* mesh blobs */}
+        <div className="absolute -top-64 left-[-12%] h-[860px] w-[860px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
+        <div className="absolute top-[-28%] right-[-18%] h-[980px] w-[980px] rounded-full bg-black/16 blur-3xl" />
+        <div className="absolute -bottom-80 left-[22%] h-[1040px] w-[1040px] rounded-full bg-[#2f6f6f]/12 blur-3xl" />
 
+        {/* subtle conic highlight */}
+        <div className="absolute inset-0 opacity-[0.22] bg-[conic-gradient(from_210deg_at_70%_20%,rgba(156,124,56,0.16),transparent_25%,rgba(0,0,0,0.10),transparent_55%,rgba(47,111,111,0.12),transparent_85%)]" />
+
+        {/* modern grid (softer) */}
         <div
-          className="absolute inset-0 opacity-[0.18]"
+          className="absolute inset-0 opacity-[0.10]"
           style={{
             backgroundImage:
-              "linear-gradient(45deg, rgba(0,0,0,0.18) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.18) 1px, transparent 1px)",
-            backgroundSize: "72px 72px",
-            backgroundPosition: "0 0, 36px 36px",
+              "linear-gradient(0deg, rgba(0,0,0,0.20) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.20) 1px, transparent 1px)",
+            backgroundSize: "120px 120px",
+            backgroundPosition: "0 0",
           }}
         />
 
-        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_15%,transparent_55%,rgba(0,0,0,0.12))]" />
+        {/* vignette */}
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_12%,transparent_55%,rgba(0,0,0,0.10))]" />
       </div>
 
       {/* NAVBAR */}
@@ -281,6 +305,15 @@ export default function Home() {
 
           {user ? (
             <>
+              {isAdmin ? (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-800 hover:bg-white/60 transition-colors"
+                >
+                  Admin Dashboard
+                </Link>
+              ) : null}
+
               <Link
                 href="/my-progress"
                 className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-800 hover:bg-white/60 transition-colors"
@@ -322,7 +355,6 @@ export default function Home() {
           className="lg:hidden relative inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 backdrop-blur shadow-sm hover:bg-white transition-colors"
           aria-label="Open menu"
         >
-          {/* subtle ring */}
           <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/5" />
           <MenuIcon />
         </button>
@@ -331,7 +363,6 @@ export default function Home() {
       {/* ✅ Fancy Mobile Menu */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50">
-          {/* Backdrop: blur + dim */}
           <div
             onClick={closeMenu}
             className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-[650ms] ease-out ${
@@ -339,40 +370,33 @@ export default function Home() {
             }`}
           />
 
-          {/* Slide panel + top glow */}
           <div
             className={`absolute right-0 top-0 h-full w-[92%] max-w-sm border-l border-white/40 bg-white/70 backdrop-blur-2xl shadow-2xl transition-transform duration-[650ms] ease-[cubic-bezier(.16,1,.3,1)] ${
               menuState === "open" ? "translate-x-0" : "translate-x-full"
             }`}
           >
-            {/* panel background decorations */}
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#9c7c38]/20 blur-3xl" />
-              <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
-              <div className="absolute inset-0 bg-[radial-gradient(600px_circle_at_70%_10%,rgba(156,124,56,0.16),transparent_55%)]" />
+              <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#9c7c38]/18 blur-3xl" />
+              <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-[#2f6f6f]/12 blur-3xl" />
+              <div className="absolute inset-0 bg-[radial-gradient(600px_circle_at_70%_10%,rgba(156,124,56,0.14),transparent_55%)]" />
             </div>
 
             <div className="relative p-6 h-full flex flex-col">
-              {/* header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                 <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-            <Image
-              src="/logo.png"
-              alt="Al Qadr"
-              width={58}
-              height={58}
-              className="rounded"
-              priority
-            />
-          </div>
+                  <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
+                    <Image
+                      src="/logo.png"
+                      alt="Al Qadr"
+                      width={58}
+                      height={58}
+                      className="rounded"
+                      priority
+                    />
+                  </div>
                   <div>
-                    <div className="text-sm font-semibold leading-tight">
-                      Al Qadr
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      Hifz Class • Menu
-                    </div>
+                    <div className="text-sm font-semibold leading-tight">Al Qadr</div>
+                    <div className="text-xs text-gray-600">Hifz Class • Menu</div>
                   </div>
                 </div>
 
@@ -387,12 +411,9 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* quick status chip */}
               <div className="mt-6 flex items-center justify-between gap-3 rounded-3xl border border-gray-200 bg-white/60 px-4 py-3 shadow-sm">
                 <div>
-                  <div className="text-xs uppercase tracking-widest text-[#9c7c38]">
-                    Status
-                  </div>
+                  <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Status</div>
                   <div className="text-sm font-semibold text-gray-900">
                     {user ? "Signed in" : "Guest"}
                   </div>
@@ -414,37 +435,25 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* menu items */}
               <div className="mt-6 grid gap-3">
-                <MenuRow
-                  href="/"
-                  label="Home"
-                  sub="Back to the main page"
-                  onClick={closeMenu}
-                />
-                <MenuRow
-                  href="#about"
-                  label="About"
-                  sub="About the madrassah"
-                  onClick={closeMenu}
-                />
-                <MenuRow
-                  href="#faq"
-                  label="FAQ"
-                  sub="Common questions"
-                  onClick={closeMenu}
-                />
-                <MenuRow
-                  href="/contact"
-                  label="Contact"
-                  sub="Ustadh details"
-                  onClick={closeMenu}
-                />
+                <MenuRow href="/" label="Home" sub="Back to the main page" onClick={closeMenu} />
+                <MenuRow href="#about" label="About" sub="About the madrassah" onClick={closeMenu} />
+                <MenuRow href="#faq" label="FAQ" sub="Common questions" onClick={closeMenu} />
+                <MenuRow href="/contact" label="Contact" sub="Ustadh details" onClick={closeMenu} />
 
                 <div className="my-1 h-px bg-gray-200/80" />
 
                 {user ? (
                   <>
+                    {isAdmin ? (
+                      <MenuRow
+                        href="/admin"
+                        label="Admin Dashboard"
+                        sub="Manage students"
+                        onClick={closeMenu}
+                      />
+                    ) : null}
+
                     <MenuRow
                       href="/my-progress"
                       label="My Progress"
@@ -478,12 +487,9 @@ export default function Home() {
                 )}
               </div>
 
-              {/* bottom area */}
               <div className="mt-auto pt-6">
                 <div className="rounded-3xl border border-gray-200 bg-white/60 px-5 py-4 shadow-sm">
-                  <div className="text-xs uppercase tracking-widest text-[#9c7c38]">
-                    Quick tip
-                  </div>
+                  <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Quick tip</div>
                   <div className="mt-1 text-sm text-gray-700">
                     Add this site to your home screen for an app-like experience.
                   </div>
@@ -517,7 +523,8 @@ export default function Home() {
             <h1 className="mt-6 text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
               Preserve the Qur’an.
               <br />
-              <span className="text-[#9c7c38]">Elevate the Heart.</span>
+              {/* ✅ slightly different accent color */}
+              <span className="text-[#2f6f6f]">Elevate the Heart.</span>
             </h1>
 
             <p className="mt-6 text-lg sm:text-xl text-gray-700 leading-relaxed max-w-2xl">
@@ -870,12 +877,7 @@ export default function Home() {
                   WhatsApp
                 </a>
 
-                <a
-                  href="#"
-                  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
-                >
-                  Email
-                </a>
+                {/* ✅ removed Email button */}
 
                 <a
                   href="https://www.google.com/maps/search/?api=1&query=49+Mountainview+Drive,+Northcliff,+Randburg,+2115"
@@ -924,6 +926,11 @@ export default function Home() {
                     <a href="/overview" className="block text-sm text-gray-700 hover:text-black">
                       Overview
                     </a>
+                    {user && isAdmin ? (
+                      <a href="/admin" className="block text-sm text-gray-700 hover:text-black">
+                        Admin Dashboard
+                      </a>
+                    ) : null}
                   </div>
                 </div>
 
