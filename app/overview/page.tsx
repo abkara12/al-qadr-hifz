@@ -20,23 +20,42 @@ function num(v: unknown) {
   return m ? Number(m[1]) : 0;
 }
 
+function parseDateKey(dateKey: string) {
+  // YYYY-MM-DD
+  const [y, m, d] = dateKey.split("-").map((x) => Number(x));
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function diffDaysInclusive(startKey: string, endKey: string) {
+  const a = parseDateKey(startKey);
+  const b = parseDateKey(endKey);
+  const ms = b.getTime() - a.getTime();
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  return Math.max(0, days) + 1; // inclusive
+}
+
 type LogRow = {
   id: string;
   dateKey?: string;
+
   sabak?: string;
   sabakRead?: string;
+
   sabakDhor?: string;
   sabakDhorRead?: string;
+
   dhor?: string;
   dhorRead?: string;
+
   weeklyGoal?: string;
 
   sabakDhorMistakes?: string;
   dhorMistakes?: string;
 
-  // weekly goal meta (stored by admin) — we WILL NOT show goalWeek
+  // weekly goal meta (admin saves these)
+  weeklyGoalStartDateKey?: string;
   weeklyGoalCompletedDateKey?: string;
-  weeklyGoalDurationDays?: number;
+  weeklyGoalDurationDays?: number | string;
 };
 
 async function fetchLogs(uid: string): Promise<LogRow[]> {
@@ -81,7 +100,8 @@ export default function OverviewPage() {
   const summary = useMemo(() => {
     if (!rows.length) return { totalDays: 0, avgSabak: 0, lastGoal: 0 };
     const sabakNums = rows.map((r) => num(r.sabak)).filter((n) => n > 0);
-    const avgSabak = sabakNums.length ? sabakNums.reduce((a, b) => a + b, 0) / sabakNums.length : 0;
+    const avgSabak =
+      sabakNums.length ? sabakNums.reduce((a, b) => a + b, 0) / sabakNums.length : 0;
     const lastGoal = num(rows[0]?.weeklyGoal);
     return { totalDays: rows.length, avgSabak, lastGoal };
   }, [rows]);
@@ -166,11 +186,16 @@ export default function OverviewPage() {
       </header>
 
       <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
-        {/* Summary cards */}
         <div className="grid sm:grid-cols-3 gap-4 mb-8">
           <StatCard label="Days logged" value={String(summary.totalDays)} />
-          <StatCard label="Average Sabak" value={summary.avgSabak ? summary.avgSabak.toFixed(1) : "—"} />
-          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
+          <StatCard
+            label="Average Sabak"
+            value={summary.avgSabak ? summary.avgSabak.toFixed(1) : "—"}
+          />
+          <StatCard
+            label="Latest weekly goal"
+            value={summary.lastGoal ? String(summary.lastGoal) : "—"}
+          />
         </div>
 
         <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur shadow-sm overflow-hidden">
@@ -179,14 +204,14 @@ export default function OverviewPage() {
               <p className="uppercase tracking-widest text-xs text-[#9c7c38]">History table</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">Your daily logs</h2>
               <p className="mt-2 text-gray-700">
-                Each day is saved as a separate entry. Your Ustad controls weekly-goal completion.
+                This includes anything you submit AND anything your Ustad logs for you.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Badge>Private</Badge>
               <Badge>Newest → oldest</Badge>
-              <Badge>Goal tracking</Badge>
+              <Badge>Goal duration</Badge>
             </div>
           </div>
 
@@ -196,7 +221,9 @@ export default function OverviewPage() {
             ) : rows.length === 0 ? (
               <div className="rounded-2xl border border-gray-200 bg-white/70 p-6">
                 <div className="text-lg font-semibold">No logs yet</div>
-                <p className="mt-2 text-gray-700">Start by submitting your first day on the My Progress page.</p>
+                <p className="mt-2 text-gray-700">
+                  Start by submitting your first day on the My Progress page.
+                </p>
                 <div className="mt-4">
                   <Link
                     href="/my-progress"
@@ -208,7 +235,6 @@ export default function OverviewPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                {/* EXACTLY “ustad-like” table style: clean cells, dividers, no pills */}
                 <table className="min-w-[1100px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
@@ -259,17 +285,24 @@ export default function OverviewPage() {
                   <tbody className="divide-y divide-gray-200">
                     {rows.map((r) => {
                       const g = num(r.weeklyGoal);
-                      const s = num(r.sabak);
 
+                      const startKey = toText(r.weeklyGoalStartDateKey);
                       const completedKey = toText(r.weeklyGoalCompletedDateKey);
-                      const duration =
+
+                      // duration (prefer stored, fallback calculate)
+                      const storedDur =
                         typeof r.weeklyGoalDurationDays === "number"
                           ? r.weeklyGoalDurationDays
-                          : r.weeklyGoalDurationDays
+                          : toText(r.weeklyGoalDurationDays)
                           ? Number(r.weeklyGoalDurationDays)
                           : null;
 
-                      const reached = Boolean(completedKey) || (duration ?? 0) > 0 || (g > 0 && s >= g);
+                      const calcDur =
+                        startKey && completedKey ? diffDaysInclusive(startKey, completedKey) : null;
+
+                      const duration = storedDur ?? calcDur;
+
+                      const completed = Boolean(completedKey) || (duration ?? 0) > 0;
 
                       return (
                         <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
@@ -313,17 +346,17 @@ export default function OverviewPage() {
                             {g > 0 ? (
                               <span
                                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
-                                  reached
+                                  completed
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                     : "border-amber-200 bg-amber-50 text-amber-700"
                                 }`}
                               >
                                 <span
                                   className={`h-2 w-2 rounded-full ${
-                                    reached ? "bg-emerald-500" : "bg-amber-500"
+                                    completed ? "bg-emerald-500" : "bg-amber-500"
                                   }`}
                                 />
-                                {reached ? "Completed" : "In progress"}
+                                {completed ? "Completed" : "In progress"}
                               </span>
                             ) : (
                               <span className="text-xs text-gray-500">No goal set</span>
@@ -331,7 +364,7 @@ export default function OverviewPage() {
                           </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {duration ? `${duration} day(s)` : reached && g > 0 ? "—" : "—"}
+                            {duration ? `${duration} day(s)` : "—"}
                           </td>
                         </tr>
                       );
@@ -353,7 +386,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 shadow-sm hover:shadow-lg transition-all duration-300">
       <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#9c7c38] via-[#9c7c38]/60 to-transparent" />
       <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#9c7c38]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
       <div className="text-xs uppercase tracking-widest text-gray-500">{label}</div>
       <div className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{value}</div>
     </div>
