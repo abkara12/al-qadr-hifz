@@ -254,11 +254,11 @@ export default function Home() {
       {/* ✅ MORE MODERN BACKGROUND */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         {/* base */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f6f3ea] via-[#fbfaf6] to-white" />
+<div className="absolute inset-0 bg-gradient-to-b from-[#e5dcc6] via-[#f0eadf] to-[#f7f5f0]" />
 
         {/* mesh blobs */}
         <div className="absolute -top-64 left-[-12%] h-[860px] w-[860px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
-        <div className="absolute top-[-28%] right-[-18%] h-[980px] w-[980px] rounded-full bg-black/16 blur-3xl" />
+<div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/28 blur-3xl" />
         <div className="absolute -bottom-80 left-[22%] h-[1040px] w-[1040px] rounded-full bg-[#2f6f6f]/12 blur-3xl" />
 
         {/* subtle conic highlight */}
