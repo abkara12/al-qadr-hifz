@@ -128,11 +128,8 @@ function InstallAppPrompt() {
             <div>
               <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Install App</div>
               <h3 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
-                Add Al Qadr to your Home Screen
+                Add the Al Qadr hifdh class app to your Home Screen
               </h3>
-              <p className="mt-2 text-sm text-gray-700 leading-relaxed">
-                This is the main feature — students should install it like an app for quick access.
-              </p>
             </div>
 
             <button
@@ -160,9 +157,6 @@ function InstallAppPrompt() {
                 <li>Select <span className="font-semibold">Add to Home Screen</span></li>
                 <li>Tap <span className="font-semibold">Add</span></li>
               </ol>
-              <div className="mt-3 text-xs text-gray-500">
-                Apple doesn’t allow an automatic install popup — this is the correct method.
-              </div>
             </div>
           ) : (
             <div className="mt-5 rounded-2xl border border-gray-200 bg-white/70 p-4 text-sm text-gray-700">
@@ -172,13 +166,9 @@ function InstallAppPrompt() {
                 </div>
               ) : (
                 <div>
-                  If your phone doesn’t show the install popup, try:
-                  <div className="mt-2 text-xs text-gray-600">
-                    Browser menu (⋮) → <span className="font-semibold">Install app</span> /{" "}
-                    <span className="font-semibold">Add to Home screen</span>. <br />
-                    Best results: <span className="font-semibold">Chrome</span>.
+                
                   </div>
-                </div>
+                
               )}
             </div>
           )}
