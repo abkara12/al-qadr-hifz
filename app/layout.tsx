@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       // Browser tab icon
-      { url: "/icons/icon-192.png", type: "image/png" },
+      { url: "/icons/favicon.ico", type: "image/x-icon" },
     ],
     apple: [
       // iPhone add-to-home-screen icon fallback
