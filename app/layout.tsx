@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,25 +11,26 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 
   icons: {
+    // ✅ browser tab icons (include favicon.ico first)
     icon: [
-      // Browser tab icon
-      { url: "/icons/icon-192.png", type: "image/png" },
+      { url: "/favicon.ico" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512.png", type: "image/png", sizes: "512x512" },
     ],
-    apple: [
-      // iPhone add-to-home-screen icon fallback
-      { url: "/icon-192.png", type: "image/png" },
-    ],
-    shortcut: ["/icon-192.png"],
-  },
 
+    // ✅ iPhone / iPad home-screen icon
+    apple: [{ url: "/icons/icon-192.png" }],
+
+    // ✅ some browsers use this
+    shortcut: ["/favicon.ico"],
+  },
+};
+
+export const viewport: Viewport = {
   themeColor: "#0b0b0b",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>
