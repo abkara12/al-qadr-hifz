@@ -31,7 +31,7 @@ function diffDaysInclusive(startKey: string, endKey: string) {
   const b = parseDateKey(endKey);
   const ms = b.getTime() - a.getTime();
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  return Math.max(0, days) + 1; // inclusive
+  return Math.max(0, days) + 1;
 }
 
 type LogRow = {
@@ -39,20 +39,22 @@ type LogRow = {
   dateKey?: string;
 
   sabak?: string;
-  sabakRead?: string; // ✅ read label (Excellent/Good/etc)
+  sabakRead?: string;
+  sabakReadNotes?: string;
 
   sabakDhor?: string;
   sabakDhorRead?: string;
+  sabakDhorReadNotes?: string;
 
   dhor?: string;
   dhorRead?: string;
+  dhorReadNotes?: string;
 
   weeklyGoal?: string;
 
   sabakDhorMistakes?: string;
   dhorMistakes?: string;
 
-  // weekly goal meta (admin saves these)
   weeklyGoalStartDateKey?: string;
   weeklyGoalCompletedDateKey?: string;
   weeklyGoalDurationDays?: number | string;
@@ -72,7 +74,6 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---------------- page ---------------- */
 export default function AdminStudentOverviewPage() {
   const params = useParams<{ uid: string }>();
   const studentUid = params.uid;
@@ -142,321 +143,81 @@ export default function AdminStudentOverviewPage() {
     return { totalDays: rows.length, avgSabak, lastGoal };
   }, [rows]);
 
-  if (checking) {
-    return (
-      <main className="min-h-screen">
-        <FancyBg />
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
-            Loading…
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (!me) {
-    return (
-      <main className="min-h-screen">
-        <FancyBg />
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-10 shadow-sm">
-            <h1 className="text-3xl font-semibold tracking-tight">Please sign in</h1>
-            <p className="mt-3 text-gray-700">You must sign in to view this student overview.</p>
-            <div className="mt-6 flex gap-3">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/admin"
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
-              >
-                Back to Admin
-              </Link>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <main className="min-h-screen">
-        <FancyBg />
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-10 shadow-sm">
-            <h1 className="text-3xl font-semibold tracking-tight">Not allowed</h1>
-            <p className="mt-3 text-gray-700">This account is not an admin.</p>
-            <div className="mt-6 flex gap-3">
-              <Link href="/" className="underline">
-                Home
-              </Link>
-              <Link href="/admin" className="underline">
-                Admin
-              </Link>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  if (checking) return <div className="p-10">Loading…</div>;
+  if (!me) return <div className="p-10">Please sign in.</div>;
+  if (!isAdmin) return <div className="p-10">Not allowed.</div>;
 
   return (
-    <main className="min-h-screen text-gray-900">
-      <FancyBg />
+    <main className="min-h-screen text-gray-900 p-10">
+      <h1 className="text-2xl font-semibold mb-6">
+        Student Overview — {studentEmail || "Student"}
+      </h1>
 
-      <header className="max-w-6xl mx-auto px-6 sm:px-10 py-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-black text-white grid place-items-center shadow-sm">
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-              <path
-                d="M8 7V4m8 3V4M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm text-gray-600">Student Overview</div>
-            <div className="text-xl font-semibold tracking-tight truncate">
-              {studentEmail || "Student"}
-            </div>
-          </div>
-        </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[1400px] w-full border-separate border-spacing-0">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-widest text-gray-500">
+              <th className="pb-3 pr-4 pl-2 border-b">Date</th>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={`/admin/student/${studentUid}`}
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
-          >
-            Log Work
-          </Link>
-          <Link
-            href="/admin"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
-          >
-            Back
-          </Link>
-        </div>
-      </header>
+              <th className="pb-3 px-4 border-b border-l">Sabak</th>
+              <th className="pb-3 px-4 border-b border-l">Read</th>
+              <th className="pb-3 px-4 border-b border-l">Notes</th>
 
-      <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
-        {/* Summary cards */}
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
-          <StatCard label="Days logged" value={String(summary.totalDays)} />
-          <StatCard label="Average Sabak" value={summary.avgSabak ? summary.avgSabak.toFixed(1) : "—"} />
-          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
-        </div>
+              <th className="pb-3 px-4 border-b border-l">Sabak Dhor</th>
+              <th className="pb-3 px-4 border-b border-l">Read</th>
+              <th className="pb-3 px-4 border-b border-l">Notes</th>
 
-        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur shadow-sm overflow-hidden">
-          <div className="p-6 sm:p-8 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="uppercase tracking-widest text-xs text-[#9c7c38]">History table</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight">Student daily logs</h2>
-            </div>
+              <th className="pb-3 px-4 border-b border-l">Dhor</th>
+              <th className="pb-3 px-4 border-b border-l">Read</th>
+              <th className="pb-3 px-4 border-b border-l">Notes</th>
 
-            <div className="flex flex-wrap gap-2">
-              <Badge>Admin view</Badge>
-              <Badge>Newest → oldest</Badge>
-              <Badge>Goal duration</Badge>
-            </div>
-          </div>
+              <th className="pb-3 px-4 border-b border-l">SD Mistakes</th>
+              <th className="pb-3 px-4 border-b border-l">D Mistakes</th>
+              <th className="pb-3 px-4 border-b border-l">Weekly Goal</th>
+              <th className="pb-3 px-4 border-b border-l">Duration</th>
+            </tr>
+          </thead>
 
-          <div className="p-6 sm:p-8">
-            {loadingRows ? (
-              <div className="text-gray-700">Loading logs…</div>
-            ) : rows.length === 0 ? (
-              <div className="rounded-2xl border border-gray-200 bg-white/70 p-6">
-                <div className="text-lg font-semibold">No logs yet</div>
-                <p className="mt-2 text-gray-700">Once the student has entries, they will show here.</p>
-                <div className="mt-4">
-                  <Link
-                    href={`/admin/student/${studentUid}`}
-                    className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
-                  >
-                    Log first entry
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-[1100px] w-full border-separate border-spacing-0">
-                  <thead>
-                    <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-200">
-                        Date
-                      </th>
+          <tbody className="divide-y divide-gray-200">
+            {rows.map((r) => (
+              <tr key={r.id} className="text-sm hover:bg-gray-50">
+                <td className="py-4 pr-4 pl-2 font-medium">
+                  {r.dateKey ?? r.id}
+                </td>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Sabak
-                      </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Read
-                      </th>
+                <td className="py-4 px-4 border-l">{toText(r.sabak) || "—"}</td>
+                <td className="py-4 px-4 border-l">{toText(r.sabakRead) || "—"}</td>
+                <td className="py-4 px-4 border-l max-w-[240px] break-words whitespace-normal">
+                  {toText(r.sabakReadNotes) || "—"}
+                </td>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Sabak Dhor
-                      </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Read
-                      </th>
+                <td className="py-4 px-4 border-l">{toText(r.sabakDhor) || "—"}</td>
+                <td className="py-4 px-4 border-l">{toText(r.sabakDhorRead) || "—"}</td>
+                <td className="py-4 px-4 border-l max-w-[240px] break-words whitespace-normal">
+                  {toText(r.sabakDhorReadNotes) || "—"}
+                </td>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Dhor
-                      </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Read
-                      </th>
+                <td className="py-4 px-4 border-l">{toText(r.dhor) || "—"}</td>
+                <td className="py-4 px-4 border-l">{toText(r.dhorRead) || "—"}</td>
+                <td className="py-4 px-4 border-l max-w-[240px] break-words whitespace-normal">
+                  {toText(r.dhorReadNotes) || "—"}
+                </td>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        SD Mistakes
-                      </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        D Mistakes
-                      </th>
+                <td className="py-4 px-4 border-l">{toText(r.sabakDhorMistakes) || "—"}</td>
+                <td className="py-4 px-4 border-l">{toText(r.dhorMistakes) || "—"}</td>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Weekly Goal
-                      </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Goal Status
-                      </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
-                        Duration
-                      </th>
-                    </tr>
-                  </thead>
+                <td className="py-4 px-4 border-l">{toText(r.weeklyGoal) || "—"}</td>
 
-                  <tbody className="divide-y divide-gray-200">
-                    {rows.map((r) => {
-                      const g = num(r.weeklyGoal);
-
-                      const startKey = toText(r.weeklyGoalStartDateKey);
-                      const completedKey = toText(r.weeklyGoalCompletedDateKey);
-
-                      const storedDur =
-                        typeof r.weeklyGoalDurationDays === "number"
-                          ? r.weeklyGoalDurationDays
-                          : toText(r.weeklyGoalDurationDays)
-                          ? Number(r.weeklyGoalDurationDays)
-                          : null;
-
-                      const calcDur =
-                        startKey && completedKey ? diffDaysInclusive(startKey, completedKey) : null;
-
-                      const duration = storedDur ?? calcDur;
-                      const completed = Boolean(completedKey) || (duration ?? 0) > 0;
-
-                      return (
-                        <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
-                          <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
-                            {r.dateKey ?? r.id}
-                          </td>
-
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabak) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                            {toText(r.sabakRead) || "—"}
-                          </td>
-
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabakDhor) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                            {toText(r.sabakDhorRead) || "—"}
-                          </td>
-
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.dhor) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                            {toText(r.dhorRead) || "—"}
-                          </td>
-
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabakDhorMistakes) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.dhorMistakes) || "—"}
-                          </td>
-
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.weeklyGoal) || "—"}
-                          </td>
-
-                          <td className="py-4 px-4 border-l border-gray-100">
-                            {g > 0 ? (
-                              <span
-                                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
-                                  completed
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                    : "border-amber-200 bg-amber-50 text-amber-700"
-                                }`}
-                              >
-                                <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    completed ? "bg-emerald-500" : "bg-amber-500"
-                                  }`}
-                                />
-                                {completed ? "Completed" : "In progress"}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-500">No goal set</span>
-                            )}
-                          </td>
-
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {duration ? `${duration} day(s)` : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+                <td className="py-4 px-4 border-l">
+                  {r.weeklyGoalDurationDays
+                    ? `${r.weeklyGoalDurationDays} day(s)`
+                    : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
-  );
-}
-
-/* ---------------- UI bits ---------------- */
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 shadow-sm hover:shadow-lg transition-all duration-300">
-      <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#9c7c38] via-[#9c7c38]/60 to-transparent" />
-      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#9c7c38]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <div className="text-xs uppercase tracking-widest text-gray-500">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{value}</div>
-    </div>
-  );
-}
-
-function FancyBg() {
-  return (
-    <div className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-      <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/30 blur-3xl" />
-      <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/20 blur-3xl" />
-      <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
-      <div
-        className="absolute inset-0 opacity-[0.18]"
-        style={{
-          backgroundImage:
-            "linear-gradient(45deg, rgba(0,0,0,0.18) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.18) 1px, transparent 1px)",
-          backgroundSize: "72px 72px",
-          backgroundPosition: "0 0, 36px 36px",
-        }}
-      />
-      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_15%,transparent_55%,rgba(0,0,0,0.12))]" />
-    </div>
   );
 }
