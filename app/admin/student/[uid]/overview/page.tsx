@@ -39,20 +39,22 @@ type LogRow = {
   dateKey?: string;
 
   sabak?: string;
-  sabakRead?: string; // ✅ read label (Excellent/Good/etc)
+  sabakRead?: string;
+  sabakReadNotes?: string;
 
   sabakDhor?: string;
   sabakDhorRead?: string;
+  sabakDhorReadNotes?: string;
 
   dhor?: string;
   dhorRead?: string;
+  dhorReadNotes?: string;
 
   weeklyGoal?: string;
 
   sabakDhorMistakes?: string;
   dhorMistakes?: string;
 
-  // weekly goal meta (admin saves these)
   weeklyGoalStartDateKey?: string;
   weeklyGoalCompletedDateKey?: string;
   weeklyGoalDurationDays?: number | string;
@@ -298,6 +300,7 @@ export default function AdminStudentOverviewPage() {
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
                         Read
                       </th>
+                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">Notes</th>
 
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
                         Sabak Dhor
@@ -305,6 +308,7 @@ export default function AdminStudentOverviewPage() {
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
                         Read
                       </th>
+                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">Notes</th>
 
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
                         Dhor
@@ -312,6 +316,7 @@ export default function AdminStudentOverviewPage() {
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
                         Read
                       </th>
+                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">Notes</th>
 
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
                         SD Mistakes
@@ -364,6 +369,8 @@ export default function AdminStudentOverviewPage() {
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
                             {toText(r.sabakRead) || "—"}
                           </td>
+                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                            {toText(r.sabakReadNotes) || "—"}</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.sabakDhor) || "—"}
@@ -371,6 +378,8 @@ export default function AdminStudentOverviewPage() {
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
                             {toText(r.sabakDhorRead) || "—"}
                           </td>
+                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                            {toText(r.sabakDhorReadNotes) || "—"}</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.dhor) || "—"}
@@ -378,6 +387,8 @@ export default function AdminStudentOverviewPage() {
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
                             {toText(r.dhorRead) || "—"}
                           </td>
+                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                            {toText(r.dhorReadNotes) || "—"}</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.sabakDhorMistakes) || "—"}
