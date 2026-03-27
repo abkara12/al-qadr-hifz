@@ -26,7 +26,33 @@ function parseDateKey(dateKey: string) {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+function getDayName(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", { weekday: "short" }); // Mon, Tue
+}
+
+function getMonthLabel(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
 function diffDaysInclusive(startKey: string, endKey: string) {
+  function getDayName(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+function getMonthLabel(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
   const a = parseDateKey(startKey);
   const b = parseDateKey(endKey);
   const ms = b.getTime() - a.getTime();
@@ -34,9 +60,27 @@ function diffDaysInclusive(startKey: string, endKey: string) {
   return Math.max(0, days) + 1; // inclusive
 }
 
+/* ---------------- sabak normalization ---------------- */
+function sabakToLines(v: unknown) {
+  const s = toText(v).toLowerCase().trim();
+  if (!s) return 0;
+
+  // If user wrote "page" or "p"
+  if (s.includes("page") || s.includes("p")) {
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n * 13; // convert page → 13 lines
+  }
+
+  // Otherwise assume it's lines
+  const n = parseFloat(s.replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+
 type LogRow = {
   id: string;
   dateKey?: string;
+
+  attendance?: string;
 
   sabak?: string;
   sabakRead?: string;
@@ -68,7 +112,7 @@ async function fetchLogs(uid: string): Promise<LogRow[]> {
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-gray-200 bg-white/70 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur">
+    <span className="inline-flex items-center rounded-full border border-gray-300 bg-white/70 px-3 py-1 text-xs font-medium text-gray-700 backdrop-blur">
       {children}
     </span>
   );
@@ -83,8 +127,7 @@ export default function AdminStudentOverviewPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const [studentEmail, setStudentEmail] = useState<string>("");
-
+const [studentName, setStudentName] = useState("");
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
 
@@ -115,8 +158,9 @@ export default function AdminStudentOverviewPage() {
       const sDoc = await getDoc(doc(db, "users", studentUid));
       if (sDoc.exists()) {
         const data = sDoc.data() as any;
-        setStudentEmail(toText(data.email));
-      }
+setStudentName(
+  toText(data.username) || toText(data.email) || "Student"
+);      }
     }
 
     async function loadLogs() {
@@ -135,21 +179,50 @@ export default function AdminStudentOverviewPage() {
     }
   }, [studentUid]);
 
+  const absentsByMonth = useMemo(() => {
+    
+  const map: Record<string, number> = {};
+
+  rows.forEach((r) => {
+    if (r.attendance !== "absent") return;
+
+    const month = getMonthLabel(r.dateKey);
+    if (!month) return;
+
+    map[month] = (map[month] || 0) + 1;
+  });
+
+  return map;
+}, [rows]);
+
+const currentMonth = getMonthLabel(new Date().toISOString().slice(0, 10));
+
+const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
+
   const summary = useMemo(() => {
-    if (!rows.length) return { totalDays: 0, avgSabak: 0, lastGoal: 0 };
-    const sabakNums = rows.map((r) => num(r.sabak)).filter((n) => n > 0);
-    const avgSabak =
-      sabakNums.length ? sabakNums.reduce((a, b) => a + b, 0) / sabakNums.length : 0;
-    const lastGoal = num(rows[0]?.weeklyGoal);
-    return { totalDays: rows.length, avgSabak, lastGoal };
-  }, [rows]);
+  if (!rows.length) return { totalDays: 0, avgSabakLines: 0, avgPresentLines: 0, lastGoal: 0 };
+
+  // Total lines including all days (0 sabak counts)
+  const totalLines = rows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
+
+  const avgSabakLines = totalLines / rows.length;
+
+  // Only present days
+  const presentRows = rows.filter((r) => r.attendance === "present");
+ const totalPresentLines = presentRows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
+  const avgPresentLines = presentRows.length ? totalPresentLines / presentRows.length : 0;
+
+  const lastGoal = num(rows[0]?.weeklyGoal);
+
+  return { totalDays: rows.length, avgSabakLines, avgPresentLines, lastGoal };
+}, [rows]);
 
   if (checking) {
     return (
       <main className="min-h-screen">
         <FancyBg />
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm">
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-8 shadow-sm">
             Loading…
           </div>
         </div>
@@ -162,7 +235,7 @@ export default function AdminStudentOverviewPage() {
       <main className="min-h-screen">
         <FancyBg />
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-10 shadow-sm">
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-10 shadow-sm">
             <h1 className="text-3xl font-semibold tracking-tight">Please sign in</h1>
             <p className="mt-3 text-gray-700">You must sign in to view this student overview.</p>
             <div className="mt-6 flex gap-3">
@@ -174,7 +247,7 @@ export default function AdminStudentOverviewPage() {
               </Link>
               <Link
                 href="/admin"
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
+                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur text-sm font-medium hover:bg-white"
               >
                 Back to Admin
               </Link>
@@ -190,7 +263,7 @@ export default function AdminStudentOverviewPage() {
       <main className="min-h-screen">
         <FancyBg />
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
-          <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-10 shadow-sm">
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-10 shadow-sm">
             <h1 className="text-3xl font-semibold tracking-tight">Not allowed</h1>
             <p className="mt-3 text-gray-700">This account is not an admin.</p>
             <div className="mt-6 flex gap-3">
@@ -226,7 +299,7 @@ export default function AdminStudentOverviewPage() {
           <div className="min-w-0">
             <div className="text-sm text-gray-600">Student Overview</div>
             <div className="text-xl font-semibold tracking-tight truncate">
-              {studentEmail || "Student"}
+              {studentName || "Student"}
             </div>
           </div>
         </div>
@@ -240,7 +313,7 @@ export default function AdminStudentOverviewPage() {
           </Link>
           <Link
             href="/admin"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur text-sm font-medium hover:bg-white"
           >
             Back
           </Link>
@@ -249,16 +322,37 @@ export default function AdminStudentOverviewPage() {
 
       <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
         {/* Summary cards */}
-        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid sm:grid-cols-4 gap-4 mb-8">
           <StatCard label="Days logged" value={String(summary.totalDays)} />
-          <StatCard label="Average Sabak" value={summary.avgSabak ? summary.avgSabak.toFixed(1) : "—"} />
-          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
+                    <StatCard
+            label="Absences (this month)"
+            value={String(currentMonthAbsents)}
+          />
+<StatCard
+  label="Average Sabak"
+  value={
+    summary.avgSabakLines
+      ? `${summary.avgSabakLines.toFixed(1)} lines/day`
+      : "—"
+  }
+/>          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white/70 backdrop-blur shadow-sm overflow-hidden">
-          <div className="p-6 sm:p-8 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="mb-6 flex flex-wrap gap-3">
+          {Object.entries(absentsByMonth).map(([month, count]) => (
+            <div
+              key={month}
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700"
+            >
+              {month}: {count} absent day(s)
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur shadow-sm overflow-hidden">
+          <div className="p-6 sm:p-8 border-b border-gray-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="uppercase tracking-widest text-xs text-[#9c7c38]">History table</p>
+              <p className="uppercase tracking-widest text-xs text-[#B8963D]">History table</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight">Student daily logs</h2>
             </div>
 
@@ -273,7 +367,7 @@ export default function AdminStudentOverviewPage() {
             {loadingRows ? (
               <div className="text-gray-700">Loading logs…</div>
             ) : rows.length === 0 ? (
-              <div className="rounded-2xl border border-gray-200 bg-white/70 p-6">
+              <div className="rounded-2xl border border-gray-300 bg-white/70 p-6">
                 <div className="text-lg font-semibold">No logs yet</div>
                 <p className="mt-2 text-gray-700">Once the student has entries, they will show here.</p>
                 <div className="mt-4">
@@ -290,55 +384,72 @@ export default function AdminStudentOverviewPage() {
                 <table className="min-w-[1100px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-200">
+                    <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                        Day
+                      </th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Date
                       </th>
+                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                        Attendance
+                      </th>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Sabak
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Read
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">Notes</th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+  Notes
+</th>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Sabak Dhor
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Read
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">Notes</th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+  Notes
+</th>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Dhor
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Read
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">Notes</th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+  Notes
+</th>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         SD Mistakes
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         D Mistakes
                       </th>
 
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Weekly Goal
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Goal Status
                       </th>
-                      <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 px-4 border-b border-gray-200 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Duration
                       </th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-200">
-                    {rows.map((r) => {
+                  <tbody className="divide-y divide-gray-300">
+                    {rows.map((r, index) => {
+                    const currentMonth = getMonthLabel(r.dateKey);
+                    const prevMonth =
+                    index > 0 ? getMonthLabel(rows[index - 1].dateKey) : null;
+
+                    const showMonthHeader = index === 0 || currentMonth !== prevMonth;
                       const g = num(r.weeklyGoal);
 
                       const startKey = toText(r.weeklyGoalStartDateKey);
@@ -355,12 +466,42 @@ export default function AdminStudentOverviewPage() {
                         startKey && completedKey ? diffDaysInclusive(startKey, completedKey) : null;
 
                       const duration = storedDur ?? calcDur;
-                      const completed = Boolean(completedKey) || (duration ?? 0) > 0;
+                      const notReached =
+                      startKey &&
+                      !completedKey &&
+                      diffDaysInclusive(startKey, r.dateKey || "") > 7;
+
+                    const completed = Boolean(completedKey);
 
                       return (
+                          <>
+                      {showMonthHeader && (
+                      <tr>
+                      <td
+                         colSpan={16}
+                         className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
+                        >
+                       {currentMonth}
+                          </td>
+                              </tr>
+                          )}
+                        
                         <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
+                          <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
+                        {getDayName(r.dateKey)}
+                        </td>
                           <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
                             {r.dateKey ?? r.id}
+                          </td>
+
+                            <td className="py-4 px-4 border-l border-gray-100">
+                            {r.attendance === "present" ? (
+                              <span className="text-emerald-600 font-semibold">Present</span>
+                            ) : r.attendance === "absent" ? (
+                              <span className="text-red-600 font-semibold">Absent</span>
+                            ) : (
+                              "—"
+                            )}
                           </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
@@ -370,7 +511,8 @@ export default function AdminStudentOverviewPage() {
                             {toText(r.sabakRead) || "—"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-                            {toText(r.sabakReadNotes) || "—"}</td>
+  {toText(r.sabakReadNotes) || "—"}
+</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.sabakDhor) || "—"}
@@ -379,7 +521,8 @@ export default function AdminStudentOverviewPage() {
                             {toText(r.sabakDhorRead) || "—"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-                            {toText(r.sabakDhorReadNotes) || "—"}</td>
+  {toText(r.sabakDhorReadNotes) || "—"}
+</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.dhor) || "—"}
@@ -388,7 +531,8 @@ export default function AdminStudentOverviewPage() {
                             {toText(r.dhorRead) || "—"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-                            {toText(r.dhorReadNotes) || "—"}</td>
+  {toText(r.dhorReadNotes) || "—"}
+</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.sabakDhorMistakes) || "—"}
@@ -407,25 +551,36 @@ export default function AdminStudentOverviewPage() {
                                 className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
                                   completed
                                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    : notReached
+                                    ? "border-red-200 bg-red-50 text-red-700"
                                     : "border-amber-200 bg-amber-50 text-amber-700"
                                 }`}
                               >
                                 <span
                                   className={`h-2 w-2 rounded-full ${
-                                    completed ? "bg-emerald-500" : "bg-amber-500"
+                                    completed
+                                      ? "bg-emerald-500"
+                                      : notReached
+                                      ? "bg-red-500"
+                                      : "bg-amber-500"
                                   }`}
                                 />
-                                {completed ? "Completed" : "In progress"}
+                                {completed
+                                  ? "Completed"
+                                  : notReached
+                                  ? "Not reached"
+                                  : "In progress"}
                               </span>
                             ) : (
                               <span className="text-xs text-gray-500">No goal set</span>
                             )}
-                          </td>
+</td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {duration ? `${duration} day(s)` : "—"}
                           </td>
                         </tr>
+                        </>
                       );
                     })}
                   </tbody>
@@ -442,9 +597,9 @@ export default function AdminStudentOverviewPage() {
 /* ---------------- UI bits ---------------- */
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-6 shadow-sm hover:shadow-lg transition-all duration-300">
-      <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#9c7c38] via-[#9c7c38]/60 to-transparent" />
-      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#9c7c38]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <div className="group relative overflow-hidden rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm hover:shadow-lg transition-all duration-300">
+      <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#B8963D] via-[#B8963D]/60 to-transparent" />
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#B8963D]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       <div className="text-xs uppercase tracking-widest text-gray-500">{label}</div>
       <div className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{value}</div>
     </div>
@@ -454,20 +609,21 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FancyBg() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#efe8da] via-[#f7f4ee] to-white" />
-      <div className="absolute -top-56 left-[-10%] h-[780px] w-[780px] rounded-full bg-[#9c7c38]/30 blur-3xl" />
-      <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/20 blur-3xl" />
-      <div className="absolute -bottom-72 left-[20%] h-[980px] w-[980px] rounded-full bg-[#9c7c38]/22 blur-3xl" />
-      <div
-        className="absolute inset-0 opacity-[0.18]"
-        style={{
-          backgroundImage:
-            "linear-gradient(45deg, rgba(0,0,0,0.18) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.18) 1px, transparent 1px)",
-          backgroundSize: "72px 72px",
-          backgroundPosition: "0 0, 36px 36px",
-        }}
-      />
-      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_15%,transparent_55%,rgba(0,0,0,0.12))]" />
+      {/* Clean luxury base */}
+      <div className="absolute inset-0 bg-[#F8F6F1]" />
+
+      {/* Deep contrast blobs */}
+      <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+      <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+
+      {/* Subtle radial glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+
+      {/* Elegant vignette */}
+      <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+
+      {/* Premium grain texture (make sure noise.png is in /public) */}
+      <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
     </div>
   );
 }

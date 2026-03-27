@@ -119,23 +119,23 @@ function InstallAppPrompt() {
 
       <div className="relative w-full max-w-md rounded-3xl border border-white/30 bg-white/75 backdrop-blur-2xl shadow-2xl overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#9c7c38]/18 blur-3xl" />
+          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#B8963D]/18 blur-3xl" />
           <div className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
         </div>
 
         <div className="relative p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Install App</div>
+              <div className="text-xs uppercase tracking-widest text-[#B8963D]">Install App</div>
               <h3 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
-                Add the Al Qadr hifdh class app to your Home Screen
+                Add the Hifdh Journal App to your Home Screen
               </h3>
             </div>
 
             <button
               type="button"
               onClick={handleClose}
-              className="shrink-0 h-10 w-10 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors grid place-items-center"
+              className="shrink-0 h-10 w-10 rounded-full border border-gray-300 bg-white/70 hover:bg-white transition-colors grid place-items-center"
               aria-label="Close"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
@@ -150,7 +150,7 @@ function InstallAppPrompt() {
           </div>
 
           {isIOS ? (
-            <div className="mt-5 rounded-2xl border border-gray-200 bg-white/70 p-4 text-sm text-gray-700">
+            <div className="mt-5 rounded-2xl border border-gray-300 bg-white/70 p-4 text-sm text-gray-700">
               <div className="font-semibold text-gray-900">On iPhone / iPad (Safari):</div>
               <ol className="mt-2 space-y-1 list-decimal list-inside">
                 <li>Tap the <span className="font-semibold">Share</span> button</li>
@@ -159,7 +159,7 @@ function InstallAppPrompt() {
               </ol>
             </div>
           ) : (
-            <div className="mt-5 rounded-2xl border border-gray-200 bg-white/70 p-4 text-sm text-gray-700">
+            <div className="mt-5 rounded-2xl border border-gray-300 bg-white/70 p-4 text-sm text-gray-700">
               {deferred ? (
                 <div>
                   Tap <span className="font-semibold">Install</span> to add it to your Home Screen.
@@ -190,7 +190,7 @@ function InstallAppPrompt() {
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 h-12 rounded-2xl border border-gray-200 bg-white/70 hover:bg-white transition-colors font-semibold"
+              className="flex-1 h-12 rounded-2xl border border-gray-300 bg-white/70 hover:bg-white transition-colors font-semibold"
             >
               Not now
             </button>
@@ -275,14 +275,14 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
     <button
       type="button"
       onClick={() => setOpen((v) => !v)}
-      className="w-full text-left rounded-2xl border border-gray-200 bg-white/70 backdrop-blur px-6 py-5 shadow-sm hover:shadow-md transition-shadow"
+      className="w-full text-left rounded-2xl border border-gray-300 bg-white/70 backdrop-blur px-6 py-5 shadow-sm hover:shadow-md transition-shadow"
       aria-expanded={open}
     >
       <div className="flex items-center justify-between gap-6">
         <h4 className="text-lg font-semibold text-gray-900">{question}</h4>
-        <span className="flex items-center gap-3 text-[#9c7c38]">
+        <span className="flex items-center gap-3 text-[#B8963D]">
           <span className="hidden sm:inline text-sm font-medium">{open ? "Close" : "Open"}</span>
-          <span className="grid place-items-center h-10 w-10 rounded-full bg-[#9c7c38]/10 text-[#9c7c38]">
+          <span className="grid place-items-center h-10 w-10 rounded-full bg-[#B8963D]/10 text-[#B8963D]">
             <ChevronIcon open={open} />
           </span>
         </span>
@@ -311,8 +311,8 @@ function FeatureCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white/70 backdrop-blur p-8 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-      <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[#9c7c38]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <div className="group relative overflow-hidden rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-8 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div className="pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[#B8963D]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       <div className="flex items-start gap-4">
         <div className="h-12 w-12 rounded-2xl bg-black text-white grid place-items-center shadow-sm">
@@ -343,14 +343,14 @@ function MenuRow({
 }) {
   const base =
     "group relative overflow-hidden rounded-2xl border px-4 py-4 text-sm font-semibold transition-all duration-300";
-  const primary = "border-black bg-black text-white hover:bg-gray-900 shadow-sm";
-  const normal = "border-gray-200 bg-white/70 text-gray-900 hover:bg-white shadow-sm";
+  const primary = "border-black bg-[#111111] text-white hover:bg-[#1c1c1c] shadow-lg shadow-black/10 shadow-sm";
+  const normal = "border-gray-300 bg-white/70 text-gray-900 hover:bg-white shadow-sm";
 
   return (
     <Link href={href} onClick={onClick} className={`${base} ${variant === "primary" ? primary : normal}`}>
       <div
         className={`pointer-events-none absolute -right-14 -top-14 h-44 w-44 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-          variant === "primary" ? "bg-white/15" : "bg-[#9c7c38]/14"
+          variant === "primary" ? "bg-white/15" : "bg-[#B8963D]/14"
         }`}
       />
 
@@ -366,7 +366,7 @@ function MenuRow({
 
         <div
           className={`grid place-items-center h-10 w-10 rounded-full transition-all duration-300 ${
-            variant === "primary" ? "bg-white/10 text-white" : "bg-[#9c7c38]/10 text-[#9c7c38]"
+            variant === "primary" ? "bg-white/10 text-white" : "bg-[#B8963D]/10 text-[#B8963D]"
           } group-hover:scale-[1.04]`}
         >
           <DotArrowIcon />
@@ -409,11 +409,8 @@ export default function Home() {
       { label: "Home", href: "/" },
       { label: "About", href: "#about" },
       { label: "FAQ", href: "#faq" },
-      { label: "Contact", href: "/contact" },
       { label: "Sign In", href: "/login" },
       { label: "Enrol (Sign Up)", href: "/signup" },
-      { label: "My Progress", href: "/my-progress" },
-      { label: "Overview", href: "/overview" },
     ],
     []
   );
@@ -427,81 +424,53 @@ export default function Home() {
     <main id="top" className="min-h-screen bg-transparent text-gray-900">
       {/* ✅ ALWAYS-ON install prompt until installed */}
       <InstallAppPrompt />
+<div className="pointer-events-none fixed inset-0 -z-10">
+  {/* Clean luxury base */}
+  <div className="absolute inset-0 bg-[#F8F6F1]" />
 
-      {/* ✅ DARKER / MORE MODERN BACKGROUND */}
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        {/* darker base */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#d7ccb3] via-[#e6decd] to-[#f2efe8]" />
+  {/* Deep contrast blobs */}
+  <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+  <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
 
-        {/* blobs */}
-        <div className="absolute -top-64 left-[-12%] h-[860px] w-[860px] rounded-full bg-[#9c7c38]/24 blur-3xl" />
-        <div className="absolute top-[-20%] right-[-15%] h-[900px] w-[900px] rounded-full bg-black/35 blur-3xl" />
-        <div className="absolute -bottom-80 left-[22%] h-[1040px] w-[1040px] rounded-full bg-[#2f6f6f]/14 blur-3xl" />
+  {/* Subtle radial glow */}
+  <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
 
-        {/* conic highlight */}
-        <div className="absolute inset-0 opacity-[0.24] bg-[conic-gradient(from_210deg_at_70%_20%,rgba(156,124,56,0.18),transparent_25%,rgba(0,0,0,0.14),transparent_55%,rgba(47,111,111,0.14),transparent_85%)]" />
+  {/* Elegant vignette */}
+  <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
 
-        {/* grid */}
-        <div
-          className="absolute inset-0 opacity-[0.12]"
-          style={{
-            backgroundImage:
-              "linear-gradient(0deg, rgba(0,0,0,0.22) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.22) 1px, transparent 1px)",
-            backgroundSize: "120px 120px",
-            backgroundPosition: "0 0",
-          }}
-        />
-
-        {/* vignette (stronger) */}
-        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_12%,transparent_50%,rgba(0,0,0,0.18))]" />
-      </div>
+  {/* 🔥 Premium grain texture (ADD THIS LAST) */}
+  <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+</div>
 
       {/* NAVBAR */}
       <header className="max-w-7xl mx-auto px-6 sm:px-10 py-7 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-            <Image src="/logo.png" alt="Al Qadr" width={58} height={58} className="rounded" priority />
+          <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
+            <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
           </div>
         </div>
 
         {/* ✅ Desktop actions */}
         <div className="hidden lg:flex items-center gap-3">
-          <Link
-            href="/contact"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/60 transition-colors"
-          >
-            Contact
-          </Link>
 
           {user ? (
             <>
               {isAdmin ? (
                 <Link
                   href="/admin"
-                  className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/60 transition-colors"
+                  className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/70 backdrop-blur-xl transition-colors"
                 >
                   Admin Dashboard
                 </Link>
               ) : null}
 
-              <Link
-                href="/my-progress"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/60 transition-colors"
-              >
-                My Progress
-              </Link>
-              <Link
-                href="/overview"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/60 backdrop-blur text-sm font-medium hover:bg-white"
-              >
-                Overview
-              </Link>
+             
             </>
           ) : (
             <>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/60 transition-colors"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/70 backdrop-blur-xl transition-colors"
               >
                 Sign In
               </Link>
@@ -522,7 +491,7 @@ export default function Home() {
             setMobileOpen(true);
             requestAnimationFrame(() => setMenuState("open"));
           }}
-          className="lg:hidden relative inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 backdrop-blur shadow-sm hover:bg-white transition-colors"
+          className="lg:hidden relative inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-300 bg-white/70 backdrop-blur shadow-sm hover:bg-white transition-colors"
           aria-label="Open menu"
         >
           <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/5" />
@@ -546,7 +515,7 @@ export default function Home() {
             }`}
           >
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#9c7c38]/18 blur-3xl" />
+              <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#B8963D]/18 blur-3xl" />
               <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-[#2f6f6f]/12 blur-3xl" />
               <div className="absolute inset-0 bg-[radial-gradient(600px_circle_at_70%_10%,rgba(156,124,56,0.14),transparent_55%)]" />
             </div>
@@ -554,19 +523,19 @@ export default function Home() {
             <div className="relative p-6 h-full flex flex-col">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-                    <Image src="/logo.png" alt="Al Qadr" width={58} height={58} className="rounded" priority />
+                  <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
+                    <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold leading-tight">Al Qadr</div>
-                    <div className="text-xs text-gray-700">Hifdh Class • Menu</div>
+                    <div className="text-sm font-semibold leading-tight"> The Hifdh Journal</div>
+                    <div className="text-xs text-gray-700">Menu</div>
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={closeMenu}
-                  className="relative inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors shadow-sm"
+                  className="relative inline-flex items-center justify-center h-11 w-11 rounded-full border border-gray-300 bg-white/70 hover:bg-white transition-colors shadow-sm"
                   aria-label="Close menu"
                 >
                   <span className="pointer-events-none absolute inset-0 rounded-full ring-1 ring-black/5" />
@@ -574,9 +543,9 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="mt-6 flex items-center justify-between gap-3 rounded-3xl border border-gray-200 bg-white/60 px-4 py-3 shadow-sm">
+              <div className="mt-6 flex items-center justify-between gap-3 rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl px-4 py-3 shadow-sm">
                 <div>
-                  <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Status</div>
+                  <div className="text-xs uppercase tracking-widest text-[#B8963D]">Status</div>
                   <div className="text-sm font-semibold text-gray-900">{user ? "Signed in" : "Guest"}</div>
                 </div>
 
@@ -584,20 +553,18 @@ export default function Home() {
                   className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
                     user
                       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border-gray-200 bg-white/60 text-gray-700"
+                      : "border-gray-300 bg-white/70 backdrop-blur-xl text-gray-700"
                   }`}
                 >
-                  <span className={`h-2 w-2 rounded-full ${user ? "bg-emerald-500" : "bg-[#9c7c38]"}`} />
+                  <span className={`h-2 w-2 rounded-full ${user ? "bg-emerald-500" : "bg-[#B8963D]"}`} />
                   {user ? "Active" : "Not logged in"}
                 </div>
               </div>
 
               <div className="mt-6 grid gap-3">
                 <MenuRow href="/" label="Home" sub="Back to the main page" onClick={closeMenu} />
-                <MenuRow href="#about" label="About" sub="About the madrassah" onClick={closeMenu} />
+                <MenuRow href="#about" label="About" sub="About the system" onClick={closeMenu} />
                 <MenuRow href="#faq" label="FAQ" sub="Common questions" onClick={closeMenu} />
-                <MenuRow href="/contact" label="Contact" sub="Ustadh details" onClick={closeMenu} />
-
                 <div className="my-1 h-px bg-gray-200/80" />
 
                 {user ? (
@@ -605,15 +572,6 @@ export default function Home() {
                     {isAdmin ? (
                       <MenuRow href="/admin" label="Admin Dashboard" sub="Manage students" onClick={closeMenu} />
                     ) : null}
-
-                    <MenuRow
-                      href="/my-progress"
-                      label="My Progress"
-                      sub="Add Progress"
-                      onClick={closeMenu}
-                      variant="primary"
-                    />
-                    <MenuRow href="/overview" label="Overview" sub="See your history" onClick={closeMenu} />
                   </>
                 ) : (
                   <>
@@ -630,17 +588,17 @@ export default function Home() {
               </div>
 
               <div className="mt-auto pt-6">
-                <div className="rounded-3xl border border-gray-200 bg-white/60 px-5 py-4 shadow-sm">
-                  <div className="text-xs uppercase tracking-widest text-[#9c7c38]">Quick tip</div>
+                <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl px-5 py-4 shadow-sm">
+                  <div className="text-xs uppercase tracking-widest text-[#B8963D]">Quick tip</div>
                   <div className="mt-1 text-sm text-gray-700">Add this site to your home screen.</div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
-                  <span>© {new Date().getFullYear()} Al Qadr</span>
+                  <span>© {new Date().getFullYear()} Hifdh Journal</span>
                   <button
                     type="button"
                     onClick={closeMenu}
-                    className="rounded-full border border-gray-200 bg-white/60 px-3 py-1.5 hover:bg-white transition-colors"
+                    className="rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl px-3 py-1.5 hover:bg-white transition-colors"
                   >
                     Close
                   </button>
@@ -655,55 +613,61 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-10 pb-16">
         <div className="grid lg:grid-cols-12 gap-10 items-stretch">
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/60 backdrop-blur px-4 py-2 text-sm">
-              <span className="h-2 w-2 rounded-full bg-[#9c7c38]" />
-              <span className="text-gray-800">Northcliff • Hifdh Class</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur px-4 py-2 text-sm">
+              <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
+              <span className="text-gray-800">The Hifdh Journal</span>
             </div>
 
             <h1 className="mt-6 text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
               Preserve the Qur’an.
               <br />
-              <span className="text-[#8B6B2E]">Elevate the Heart.</span>
+              <span className="text-[#1F3F3F]">Elevate the Heart.</span>
             </h1>
 
             <p className="mt-6 text-lg sm:text-xl text-gray-800 leading-relaxed max-w-2xl">
-              Join the Al Qadr Hifdh Program in Northcliff — a journey of memorisation, discipline,
+              Welcome to the Hifdh Journal — a journey of memorisation, discipline,
               and spiritual growth. Track your daily Sabak, Dhor, Sabak Dhor and weekly goals — all
               in one place.
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              {user ? (
-                <>
-                  <Link
-                    href="/my-progress"
-                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
-                  >
-                    Go to My Progress
-                  </Link>
-                  <Link
-                    href="/overview"
-                    className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
-                  >
-                    View Overview
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/signup"
-                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
-                  >
-                    Begin Your Journey
-                  </Link>
-                  <a
-                    href="#about"
-                    className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
-                  >
-                    Explore Program
-                  </a>
-                </>
-              )}
+             {user ? (
+    isAdmin ? (
+      // ✅ Admin buttons
+      <>
+        <Link
+          href="/admin"
+          className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
+        >
+          Admin Dashboard
+        </Link>
+      </>
+    ) : (
+      // ✅ Student button
+      <Link
+        href="/overview"
+        className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+      >
+        My Overview
+      </Link>
+    )
+  ) : (
+    // ✅ Guest buttons
+    <>
+      <Link
+        href="/signup"
+        className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+      >
+        Begin My Journey
+      </Link>
+      <a
+        href="#about"
+        className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
+      >
+        Explore Program
+      </a>
+    </>
+  )}
             </div>
 
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl items-stretch">
@@ -756,10 +720,10 @@ export default function Home() {
               ].map((item) => (
                 <div
                   key={item.k}
-                  className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-white/60 backdrop-blur px-5 py-5 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 h-[88px] flex items-center"
+                  className="group relative overflow-hidden rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur px-5 py-5 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 h-[88px] flex items-center"
                 >
-                  <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#9c7c38] via-[#9c7c38]/60 to-transparent" />
-                  <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#9c7c38]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#B8963D] via-[#B8963D]/60 to-transparent" />
+                  <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#B8963D]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-2xl bg-black text-white grid place-items-center shadow-sm">
@@ -776,7 +740,7 @@ export default function Home() {
           </div>
 
           <div className="lg:col-span-5 grid gap-6">
-            <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white/80 to-white/40 backdrop-blur p-8 shadow-lg">
+            <div className="rounded-3xl border border-gray-300 bg-gradient-to-br from-white/80 to-white/40 backdrop-blur p-8 shadow-lg">
               <p className="text-xl leading-relaxed italic">
                 “And We have certainly made the Qur’an easy for remembrance, so is there any who
                 will remember?”
@@ -786,8 +750,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-gray-200 bg-black text-white p-8 shadow-xl relative overflow-hidden">
-              <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#9c7c38]/25 blur-2xl" />
+            <div className="rounded-3xl border border-gray-300 bg-black text-white p-8 shadow-xl relative overflow-hidden">
+              <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#B8963D]/25 blur-2xl" />
               <h3 className="mt-1 text-2xl font-semibold">Preview: Student Dashboard</h3>
               <p className="mt-3 text-white/70 leading-relaxed">
                 Secure login. Daily submissions. Weekly goals. A calm system designed for focus —
@@ -809,18 +773,17 @@ export default function Home() {
       {/* ABOUT */}
       <section id="about" className="py-20">
         <div className="max-w-5xl mx-auto px-6 sm:px-10">
-          <div className="rounded-3xl border border-gray-200 bg-white/60 backdrop-blur p-10 shadow-sm">
-            <p className="uppercase tracking-widest text-sm text-[#9c7c38] mb-3">About the Madrassah</p>
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur p-10 shadow-sm">
+            <p className="uppercase tracking-widest text-sm text-[#B8963D] mb-3">About the Hifdh Journal</p>
 
-            <h2 className="text-4xl font-semibold tracking-tight">A Peaceful & Disciplined Environment for Hifdh</h2>
+            <h2 className="text-4xl font-semibold tracking-tight">Clarity, Consistency, and Accountability in Hifdh</h2>
 
             <div className="mt-6 grid md:grid-cols-2 gap-8">
               <p className="text-gray-800 leading-relaxed text-lg">
-                Located in Northcliff, the Al Qadr Hifdh class offers a peaceful and disciplined environment where students build a deep and lasting connection with the Qur’an.
-              </p>
-              <p className="text-gray-800 leading-relaxed text-lg">
-                Through a structured system emphasising focused Sabak, consistent Dhor, and clear weekly targets, students are guided step by step in their memorisation journey — while nurturing discipline, consistency, and good character.
-              </p>
+A structured and organised platform designed to track and manage Hifdh progress with clarity and consistency.
+
+Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalised notes, the system ensures steady memorisation progress while promoting discipline and accountability.              </p>
+             
             </div>
           </div>
         </div>
@@ -834,12 +797,6 @@ export default function Home() {
               <p className="uppercase tracking-widest text-sm text-[#5E4A1D]">Program Highlights</p>
               <h2 className="mt-2 text-4xl font-semibold tracking-tight">Designed for Consistency & Excellence</h2>
             </div>
-            <Link
-              href="/contact"
-              className="inline-flex md:self-end items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
-            >
-              Enrol Now
-            </Link>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -872,8 +829,8 @@ export default function Home() {
               }
             />
             <FeatureCard
-              title="Personal Progress System"
-              text="Each student logs in privately and tracks their own Sabak, Dhor, and weekly goal progress."
+              title="Progress System"
+              text="The Ustadh logs in and submits the student's Sabak, Dhor, sabak dhor and weekly goal progress."
               icon={
                 <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
                   <path d="M12 12a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" strokeWidth="2" />
@@ -895,20 +852,20 @@ export default function Home() {
 
           <div className="grid gap-4">
             <FAQItem
-              question="Who can join the Al Qadr Hifdh Class?"
-              answer="Students of all ages and levels are welcome. Beginners receive step-by-step guidance, while advanced students continue to strengthen memorisation and retention."
+              question="What makes this system more effective than simple tracking?"
+              answer="Unlike basic record-keeping, this system combines progress tracking, structured targets, and performance notes in one place — creating a complete overview that supports both discipline and steady improvement."
             />
             <FAQItem
-              question="What is the class schedule?"
-              answer="Classes run Monday to Friday. Daily sessions focus on new memorisation (Sabak) and revision (Dhor), ensuring a balanced pace that supports long-term retention."
+              question="Does it replace manual record-keeping?"
+              answer="Yes. Instead of using notebooks, everything is organised and securely stored in one structured digital system."
             />
             <FAQItem
-              question="Who teaches the class?"
-              answer="Ml Shaheed Bhabha and Hafidh Muhammed Saleem Pandor, two dedicated and experienced teachers with over 4 years of experience, provide personalised guidance and oversight to every student."
+              question="How does the system support long-term Hifdh goals?"
+              answer="By combining daily tracking, revision monitoring, and structured targets, the system encourages steady progress and long-term memorisation retention."
             />
             <FAQItem
-              question="How do students submit their daily progress?"
-              answer="After signing in, students go to the My Progress page where they enter their Sabak, Sabak Dhor, Dhor, and weekly goal. The system saves it securely and updates the Overview automatically."
+              question="How will this system improve memorisation consistency?"
+              answer="The system creates clear daily and weekly structure through Sabak and Dhor tracking, helping maintain discipline and preventing gaps in revision."
             />
           </div>
         </div>
@@ -917,13 +874,13 @@ export default function Home() {
       {/* CTA */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-6 sm:px-10">
-          <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white/70 to-white/40 backdrop-blur p-10 shadow-lg overflow-hidden relative">
-            <div className="absolute -left-24 -bottom-24 h-72 w-72 rounded-full bg-[#9c7c38]/15 blur-3xl" />
+          <div className="rounded-3xl border border-gray-300 bg-gradient-to-br from-white/70 to-white/40 backdrop-blur p-10 shadow-lg overflow-hidden relative">
+            <div className="absolute -left-24 -bottom-24 h-72 w-72 rounded-full bg-[#B8963D]/15 blur-3xl" />
             <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-black/10 blur-3xl" />
 
             <div className="grid md:grid-cols-12 gap-10 items-center relative">
               <div className="md:col-span-8">
-                <p className="uppercase tracking-widest text-sm text-[#9c7c38]">Ready to begin?</p>
+                <p className="uppercase tracking-widest text-sm text-[#B8963D]">Ready to begin?</p>
                 <h2 className="mt-2 text-4xl font-semibold tracking-tight">
                   Enrol and start tracking your Hifdh journey today
                 </h2>
@@ -952,38 +909,17 @@ export default function Home() {
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-gray-200 bg-white/60 backdrop-blur">
+      <footer className="border-t border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 sm:px-10 py-14">
           <div className="grid gap-10 lg:grid-cols-12 items-start">
             <div className="lg:col-span-4">
               <div className="flex items-center gap-4">
-               <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-200 shadow-sm grid place-items-center">
-            <Image src="/logo.png" alt="Al Qadr" width={58} height={58} className="rounded" priority />
+               <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
+            <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
           </div>
                 <div>
-                  <div className="font-semibold text-lg">Al Qadr</div>
-                  <div className="text-sm text-gray-700">Hifdh Class • Northcliff</div>
+                  <div className="font-semibold text-lg">The Hifdh Journal</div>
                 </div>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="https://wa.me/27606211418"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
-                >
-                  WhatsApp
-                </a>
-
-                <a
-                  href="https://www.google.com/maps/search/?api=1&query=49+Mountainview+Drive,+Northcliff,+Randburg,+2115"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center h-10 px-4 rounded-full border border-gray-200 bg-white/70 hover:bg-white transition-colors text-sm text-gray-800"
-                >
-                  Location
-                </a>
               </div>
             </div>
 
@@ -995,17 +931,14 @@ export default function Home() {
                     <a href="/" className="block text-sm text-gray-700 hover:text-black">Home</a>
                     <a href="#about" className="block text-sm text-gray-700 hover:text-black">About</a>
                     <a href="#faq" className="block text-sm text-gray-700 hover:text-black">FAQ</a>
-                    <a href="/contact" className="block text-sm text-gray-700 hover:text-black">Contact</a>
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-sm font-semibold text-gray-900 mb-4">Student Portal</div>
+                  <div className="text-sm font-semibold text-gray-900 mb-4">Portal</div>
                   <div className="space-y-3">
                     <a href="/login" className="block text-sm text-gray-700 hover:text-black">Sign In</a>
                     <a href="/signup" className="block text-sm text-gray-700 hover:text-black">Enrol (Sign Up)</a>
-                    <a href="/my-progress" className="block text-sm text-gray-700 hover:text-black">My Progress</a>
-                    <a href="/overview" className="block text-sm text-gray-700 hover:text-black">Overview</a>
                     {user && isAdmin ? (
                       <a href="/admin" className="block text-sm text-gray-700 hover:text-black">
                         Admin Dashboard
@@ -1023,10 +956,10 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-10 rounded-3xl border border-gray-200 bg-gradient-to-br from-white/70 to-white/40 backdrop-blur p-6 shadow-sm">
+              <div className="mt-10 rounded-3xl border border-gray-300 bg-gradient-to-br from-white/70 to-white/40 backdrop-blur p-6 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
-                    <div className="text-sm uppercase tracking-widest text-[#9c7c38]">Student Portal</div>
+                    <div className="text-sm uppercase tracking-widest text-[#B8963D]">Student Portal</div>
                     <div className="mt-1 font-semibold text-lg">Ready to begin your journey?</div>
                     <div className="mt-1 text-sm text-gray-700">Sign up and start tracking daily progress.</div>
                   </div>
@@ -1052,8 +985,6 @@ export default function Home() {
           <div className="my-10 h-px bg-gray-200" />
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-600">
-            <p>© {new Date().getFullYear()} Al Qadr Hifdh Class. All rights reserved.</p>
-
             <div className="flex items-center gap-4">
               <a href="#top" className="hover:text-black">Back to top ↑</a>
               <span className="text-gray-300">|</span>
