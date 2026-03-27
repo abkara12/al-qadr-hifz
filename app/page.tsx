@@ -865,7 +865,7 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
             />
             <FAQItem
               question="How will this system improve memorisation consistency?"
-              answer="The system creates clear daily and weekly structure through Sabak and Dhor tracking, helping maintain discipline and preventing gaps in revision."
+              answer="The system creates clear  and weekly structure through Sabak and Dhor tracking, helping maintain discipline and preventing gaps in revision."
             />
           </div>
         </div>
