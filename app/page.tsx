@@ -128,7 +128,7 @@ function InstallAppPrompt() {
             <div>
               <div className="text-xs uppercase tracking-widest text-[#B8963D]">Install App</div>
               <h3 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
-                Add the Hifdh Journal App to your Home Screen
+                Add the Al-Qadr Hifdh App to your Home Screen
               </h3>
             </div>
 
@@ -527,7 +527,7 @@ export default function Home() {
                     <Image src="/logo.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold leading-tight"> The Hifdh Journal</div>
+                    <div className="text-sm font-semibold leading-tight"> Al-Qadr Hifdh App</div>
                     <div className="text-xs text-gray-700">Menu</div>
                   </div>
                 </div>
@@ -594,7 +594,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs text-gray-600">
-                  <span>© {new Date().getFullYear()} Hifdh Journal</span>
+                  <span>© {new Date().getFullYear()} Al-Qadr Hifdh App</span>
                   <button
                     type="button"
                     onClick={closeMenu}
@@ -615,7 +615,7 @@ export default function Home() {
           <div className="lg:col-span-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur px-4 py-2 text-sm">
               <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
-              <span className="text-gray-800">The Hifdh Journal</span>
+              <span className="text-gray-800">Al-Qadr Hifdh App</span>
             </div>
 
             <h1 className="mt-6 text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
@@ -625,7 +625,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-6 text-lg sm:text-xl text-gray-800 leading-relaxed max-w-2xl">
-              Welcome to the Hifdh Journal — a journey of memorisation, discipline,
+              Welcome to the Al-Qadr Hifdh App — a journey of memorisation, discipline,
               and spiritual growth. Track your daily Sabak, Dhor, Sabak Dhor and weekly goals — all
               in one place.
             </p>
@@ -774,15 +774,17 @@ export default function Home() {
       <section id="about" className="py-20">
         <div className="max-w-5xl mx-auto px-6 sm:px-10">
           <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur p-10 shadow-sm">
-            <p className="uppercase tracking-widest text-sm text-[#B8963D] mb-3">About the Hifdh Journal</p>
+            <p className="uppercase tracking-widest text-sm text-[#B8963D] mb-3">About the Madrassah</p>
 
             <h2 className="text-4xl font-semibold tracking-tight">Clarity, Consistency, and Accountability in Hifdh</h2>
 
             <div className="mt-6 grid md:grid-cols-2 gap-8">
               <p className="text-gray-800 leading-relaxed text-lg">
-A structured and organised platform designed to track and manage Hifdh progress with clarity and consistency.
+A Peaceful & Disciplined Environment for Hifdh
+Located in Northcliff, the Al Qadr Hifdh class offers a peaceful and disciplined environment where students build a deep and lasting connection with the Qur’an.
 
-Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalised notes, the system ensures steady memorisation progress while promoting discipline and accountability.              </p>
+Through a structured system emphasising focused Sabak, consistent Dhor, and clear weekly targets, students are guided step by step in their memorisation journey — while nurturing discipline, consistency, and good character.
+            </p>
              
             </div>
           </div>
@@ -852,20 +854,20 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
 
           <div className="grid gap-4">
             <FAQItem
-              question="What makes this system more effective than simple tracking?"
-              answer="Unlike basic record-keeping, this system combines progress tracking, structured targets, and performance notes in one place — creating a complete overview that supports both discipline and steady improvement."
+              question="Who can join the Al Qadr Hifdh Class?"
+              answer="Students of all ages and levels are welcome. Beginners receive step-by-step guidance, while advanced students continue to strengthen memorisation and retention."
             />
             <FAQItem
-              question="Does it replace manual record-keeping?"
-              answer="Yes. Instead of using notebooks, everything is organised and securely stored in one structured digital system."
+              question="What is the class schedule?"
+              answer="Classes run Monday to Saturday. Daily sessions focus on new memorisation (Sabak) and revision (Dhor), ensuring a balanced pace that supports long-term retention."
             />
             <FAQItem
-              question="How does the system support long-term Hifdh goals?"
-              answer="By combining daily tracking, revision monitoring, and structured targets, the system encourages steady progress and long-term memorisation retention."
+              question="Who teaches the class?"
+              answer="Ml Shaheed Bhabha and Hafidh Muhammed Saleem Pandor, two dedicated and experienced teachers with over 4 years of experience, provide personalised guidance and oversight to every student."
             />
             <FAQItem
-              question="How will this system improve memorisation consistency?"
-              answer="The system creates clear  and weekly structure through Sabak and Dhor tracking, helping maintain discipline and preventing gaps in revision."
+              question="How do parents view their child's progress?"
+              answer="Parents can view their child's progress through the student dashboard when they are signed in to their account, which displays daily Sabak, Dhor, sabak dhor and weekly goal updates submitted by the Ustadh."
             />
           </div>
         </div>
@@ -918,7 +920,7 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
             <Image src="/logo.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
           </div>
                 <div>
-                  <div className="font-semibold text-lg">The Hifdh Journal</div>
+                  <div className="font-semibold text-lg">Al-Qadr Hifdh App</div>
                 </div>
               </div>
             </div>
