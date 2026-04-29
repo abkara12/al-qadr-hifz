@@ -9,6 +9,13 @@ import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
 
 /** -------------------- Date helpers -------------------- */
+const DEFAULT_SABAK_VALUE = "0 lines";
+
+function normalizeSabakForSave(v: string) {
+  const s = v.trim();
+  return s ? s : DEFAULT_SABAK_VALUE;
+}
+
 function getDateKeySA() {
   const now = new Date();
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -40,8 +47,8 @@ function diffDaysInclusive(startKey: string, endKey: string) {
 function isoWeekKeyFromDateKey(dateKey: string) {
   const d = parseDateKey(dateKey);
   const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = (date.getDay() + 6) % 7; // Mon=0..Sun=6
-  date.setDate(date.getDate() - day + 3); // Thu of current week
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day + 3);
   const firstThursday = new Date(date.getFullYear(), 0, 4);
   const firstDay = (firstThursday.getDay() + 6) % 7;
   firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
@@ -130,7 +137,6 @@ function LoadingCard() {
   );
 }
 
-/** -------------------- Reading quality options -------------------- */
 const READING_OPTIONS = [
   { value: "", label: "Select…" },
   { value: "Excellent", label: "Excellent" },
@@ -152,7 +158,7 @@ export default function AdminStudentPage() {
 
   const [studentName, setStudentName] = useState("");
 
-  const [sabak, setSabak] = useState("");
+  const [sabak, setSabak] = useState(DEFAULT_SABAK_VALUE);
   const [sabakDhor, setSabakDhor] = useState("");
   const [dhor, setDhor] = useState("");
 
@@ -256,7 +262,7 @@ export default function AdminStudentPage() {
 
         setAttendance(log.attendance === "absent" ? "absent" : "present");
 
-        setSabak(toText(log.sabak));
+        setSabak(toText(log.sabak) || DEFAULT_SABAK_VALUE);
         setSabakDhor(toText(log.sabakDhor));
         setDhor(toText(log.dhor));
 
@@ -276,7 +282,7 @@ export default function AdminStudentPage() {
       } else {
         setAttendance("present");
 
-        setSabak("");
+        setSabak(DEFAULT_SABAK_VALUE);
         setSabakDhor("");
         setDhor("");
 
@@ -316,7 +322,7 @@ export default function AdminStudentPage() {
 
       const finalAttendance = attendance || "present";
 
-      const finalSabak = sabak;
+      const finalSabak = normalizeSabakForSave(sabak);
       const finalSabakDhor = sabakDhor;
       const finalDhor = dhor;
 
@@ -572,7 +578,7 @@ export default function AdminStudentPage() {
                 label="Sabak amount"
                 value={sabak}
                 setValue={setSabak}
-                hint="Example: 2 pages / 1 ruku / 5 lines"
+                hint="Default: 0 lines / Example: 2 pages / 1 ruku / 5 lines"
               />
 
               <div className="grid sm:grid-cols-2 gap-4">

@@ -26,10 +26,33 @@ function parseDateKey(dateKey: string) {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+function getDateKeySA() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const y = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const m = parts.find((p) => p.type === "month")?.value ?? "00";
+  const d = parts.find((p) => p.type === "day")?.value ?? "00";
+
+  return `${y}-${m}-${d}`;
+}
+
+function formatDateKey(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function getDayName(dateKey?: string) {
   if (!dateKey) return "";
   const d = parseDateKey(dateKey);
-  return d.toLocaleDateString("en-US", { weekday: "short" }); // Mon, Tue
+  return d.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 function getMonthLabel(dateKey?: string) {
@@ -39,25 +62,11 @@ function getMonthLabel(dateKey?: string) {
 }
 
 function diffDaysInclusive(startKey: string, endKey: string) {
-  function getDayName(dateKey?: string) {
-  if (!dateKey) return "";
-  const d = parseDateKey(dateKey);
-  return d.toLocaleDateString("en-US", { weekday: "short" });
-}
-
-function getMonthLabel(dateKey?: string) {
-  if (!dateKey) return "";
-  const d = parseDateKey(dateKey);
-  return d.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-}
   const a = parseDateKey(startKey);
   const b = parseDateKey(endKey);
   const ms = b.getTime() - a.getTime();
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  return Math.max(0, days) + 1; // inclusive
+  return Math.max(0, days) + 1;
 }
 
 /* ---------------- sabak normalization ---------------- */
@@ -65,13 +74,11 @@ function sabakToLines(v: unknown) {
   const s = toText(v).toLowerCase().trim();
   if (!s) return 0;
 
-  // If user wrote "page" or "p"
   if (s.includes("page") || s.includes("p")) {
-    const n = parseFloat(s);
-    return isNaN(n) ? 0 : n * 13; // convert page → 13 lines
+    const n = parseFloat(s.replace(",", "."));
+    return isNaN(n) ? 0 : n * 13;
   }
 
-  // Otherwise assume it's lines
   const n = parseFloat(s.replace(",", "."));
   return isNaN(n) ? 0 : n;
 }
@@ -102,12 +109,58 @@ type LogRow = {
   weeklyGoalStartDateKey?: string;
   weeklyGoalCompletedDateKey?: string;
   weeklyGoalDurationDays?: number | string;
+
+  isVirtualDay?: boolean;
 };
 
 async function fetchLogs(uid: string): Promise<LogRow[]> {
   const q = query(collection(db, "users", uid, "logs"), orderBy("dateKey", "desc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+}
+
+function buildCalendarRows(rows: LogRow[]) {
+  if (!rows.length) return [];
+
+  const sortedAsc = [...rows].sort((a, b) =>
+    toText(a.dateKey || a.id).localeCompare(toText(b.dateKey || b.id))
+  );
+
+  const startKey = toText(sortedAsc[0]?.dateKey || sortedAsc[0]?.id);
+  const endKey = getDateKeySA();
+
+  if (!startKey) return rows;
+
+  const logsByDate = new Map<string, LogRow>();
+
+  rows.forEach((r) => {
+    const key = toText(r.dateKey || r.id);
+    if (key) logsByDate.set(key, r);
+  });
+
+  const result: LogRow[] = [];
+  const current = parseDateKey(startKey);
+  const end = parseDateKey(endKey);
+
+  while (current.getTime() <= end.getTime()) {
+    const key = formatDateKey(current);
+
+    result.push(
+      logsByDate.get(key) || {
+        id: `virtual-${key}`,
+        dateKey: key,
+        attendance: "not_logged",
+        sabak: "0 lines",
+        isVirtualDay: true,
+      }
+    );
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return result.sort((a, b) =>
+    toText(b.dateKey || b.id).localeCompare(toText(a.dateKey || a.id))
+  );
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
@@ -127,7 +180,7 @@ export default function AdminStudentOverviewPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
-const [studentName, setStudentName] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
 
@@ -158,9 +211,8 @@ const [studentName, setStudentName] = useState("");
       const sDoc = await getDoc(doc(db, "users", studentUid));
       if (sDoc.exists()) {
         const data = sDoc.data() as any;
-setStudentName(
-  toText(data.username) || toText(data.email) || "Student"
-);      }
+        setStudentName(toText(data.username) || toText(data.email) || "Student");
+      }
     }
 
     async function loadLogs() {
@@ -179,43 +231,62 @@ setStudentName(
     }
   }, [studentUid]);
 
+  const calendarRows = useMemo(() => buildCalendarRows(rows), [rows]);
+
   const absentsByMonth = useMemo(() => {
-    
-  const map: Record<string, number> = {};
+    const map: Record<string, number> = {};
 
-  rows.forEach((r) => {
-    if (r.attendance !== "absent") return;
+    rows.forEach((r) => {
+      if (r.attendance !== "absent") return;
 
-    const month = getMonthLabel(r.dateKey);
-    if (!month) return;
+      const month = getMonthLabel(r.dateKey);
+      if (!month) return;
 
-    map[month] = (map[month] || 0) + 1;
-  });
+      map[month] = (map[month] || 0) + 1;
+    });
 
-  return map;
-}, [rows]);
+    return map;
+  }, [rows]);
 
-const currentMonth = getMonthLabel(new Date().toISOString().slice(0, 10));
-
-const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
+  const currentMonth = getMonthLabel(getDateKeySA());
+  const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
   const summary = useMemo(() => {
-  if (!rows.length) return { totalDays: 0, avgSabakLines: 0, avgPresentLines: 0, lastGoal: 0 };
+    if (!calendarRows.length) {
+      return {
+        totalDays: 0,
+        avgSabakLines: 0,
+        avgPresentLines: 0,
+        lastGoal: 0,
+      };
+    }
 
-  // Total lines including all days (0 sabak counts)
-  const totalLines = rows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
+    const totalLines = calendarRows.reduce(
+      (sum, r) => sum + sabakToLines(r.sabak),
+      0
+    );
 
-  const avgSabakLines = totalLines / rows.length;
+    const avgSabakLines = totalLines / calendarRows.length;
 
-  // Only present days
-  const presentRows = rows.filter((r) => r.attendance === "present");
- const totalPresentLines = presentRows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
-  const avgPresentLines = presentRows.length ? totalPresentLines / presentRows.length : 0;
+    const presentRows = calendarRows.filter((r) => r.attendance === "present");
+    const totalPresentLines = presentRows.reduce(
+      (sum, r) => sum + sabakToLines(r.sabak),
+      0
+    );
 
-  const lastGoal = num(rows[0]?.weeklyGoal);
+    const avgPresentLines = presentRows.length
+      ? totalPresentLines / presentRows.length
+      : 0;
 
-  return { totalDays: rows.length, avgSabakLines, avgPresentLines, lastGoal };
-}, [rows]);
+    const lastGoal = num(rows[0]?.weeklyGoal);
+
+    return {
+      totalDays: calendarRows.length,
+      avgSabakLines,
+      avgPresentLines,
+      lastGoal,
+    };
+  }, [calendarRows, rows]);
 
   if (checking) {
     return (
@@ -321,24 +392,21 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
       </header>
 
       <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
-        {/* Summary cards */}
         <div className="grid sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Days logged" value={String(summary.totalDays)} />
-                    <StatCard
-            label="Absences (this month)"
-            value={String(currentMonthAbsents)}
+          <StatCard label="Days counted" value={String(summary.totalDays)} />
+          <StatCard label="Absences (this month)" value={String(currentMonthAbsents)} />
+          <StatCard
+            label="Average Sabak"
+            value={
+              summary.totalDays
+                ? `${summary.avgSabakLines.toFixed(1)} lines/day`
+                : "—"
+            }
           />
-<StatCard
-  label="Average Sabak"
-  value={
-    summary.avgSabakLines
-      ? `${summary.avgSabakLines.toFixed(1)} lines/day`
-      : "—"
-  }
-/>          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
+          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
         </div>
 
-                <div className="mb-6 flex flex-wrap gap-3">
+        <div className="mb-6 flex flex-wrap gap-3">
           {Object.entries(absentsByMonth).map(([month, count]) => (
             <div
               key={month}
@@ -384,13 +452,13 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                 <table className="min-w-[1100px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
-                    <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Day
                       </th>
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Date
                       </th>
-                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Attendance
                       </th>
 
@@ -401,8 +469,8 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                         Read
                       </th>
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
-  Notes
-</th>
+                        Notes
+                      </th>
 
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Sabak Dhor
@@ -411,8 +479,8 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                         Read
                       </th>
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
-  Notes
-</th>
+                        Notes
+                      </th>
 
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Dhor
@@ -421,8 +489,8 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                         Read
                       </th>
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
-  Notes
-</th>
+                        Notes
+                      </th>
 
                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         SD Mistakes
@@ -444,12 +512,12 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                   </thead>
 
                   <tbody className="divide-y divide-gray-300">
-                    {rows.map((r, index) => {
-                    const currentMonth = getMonthLabel(r.dateKey);
-                    const prevMonth =
-                    index > 0 ? getMonthLabel(rows[index - 1].dateKey) : null;
+                    {calendarRows.map((r, index) => {
+                      const currentMonth = getMonthLabel(r.dateKey);
+                      const prevMonth =
+                        index > 0 ? getMonthLabel(calendarRows[index - 1].dateKey) : null;
 
-                    const showMonthHeader = index === 0 || currentMonth !== prevMonth;
+                      const showMonthHeader = index === 0 || currentMonth !== prevMonth;
                       const g = num(r.weeklyGoal);
 
                       const startKey = toText(r.weeklyGoalStartDateKey);
@@ -467,52 +535,53 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
                       const duration = storedDur ?? calcDur;
                       const notReached =
-                      startKey &&
-                      !completedKey &&
-                      diffDaysInclusive(startKey, r.dateKey || "") > 7;
+                        startKey &&
+                        !completedKey &&
+                        diffDaysInclusive(startKey, r.dateKey || "") > 7;
 
-                    const completed = Boolean(completedKey);
+                      const completed = Boolean(completedKey);
 
                       return (
-                          <>
-                      {showMonthHeader && (
-                      <tr>
-                      <td
-                         colSpan={16}
-                         className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
-                        >
-                       {currentMonth}
-                          </td>
-                              </tr>
-                          )}
-                        
                         <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
+                          {showMonthHeader ? (
+                            <td
+                              colSpan={17}
+                              className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
+                            >
+                              {currentMonth}
+                            </td>
+                          ) : null}
+
+                          {!showMonthHeader ? null : null}
+
                           <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
-                        {getDayName(r.dateKey)}
-                        </td>
+                            {getDayName(r.dateKey)}
+                          </td>
                           <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
                             {r.dateKey ?? r.id}
                           </td>
 
-                            <td className="py-4 px-4 border-l border-gray-100">
+                          <td className="py-4 px-4 border-l border-gray-100">
                             {r.attendance === "present" ? (
                               <span className="text-emerald-600 font-semibold">Present</span>
                             ) : r.attendance === "absent" ? (
                               <span className="text-red-600 font-semibold">Absent</span>
+                            ) : r.attendance === "not_logged" ? (
+                              <span className="text-gray-500 font-semibold">Not logged</span>
                             ) : (
                               "—"
                             )}
                           </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabak) || "—"}
+                            {toText(r.sabak) || "0 lines"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
                             {toText(r.sabakRead) || "—"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-  {toText(r.sabakReadNotes) || "—"}
-</td>
+                            {toText(r.sabakReadNotes) || "—"}
+                          </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.sabakDhor) || "—"}
@@ -521,8 +590,8 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                             {toText(r.sabakDhorRead) || "—"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-  {toText(r.sabakDhorReadNotes) || "—"}
-</td>
+                            {toText(r.sabakDhorReadNotes) || "—"}
+                          </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.dhor) || "—"}
@@ -531,8 +600,8 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                             {toText(r.dhorRead) || "—"}
                           </td>
                           <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-  {toText(r.dhorReadNotes) || "—"}
-</td>
+                            {toText(r.dhorReadNotes) || "—"}
+                          </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {toText(r.sabakDhorMistakes) || "—"}
@@ -574,13 +643,12 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                             ) : (
                               <span className="text-xs text-gray-500">No goal set</span>
                             )}
-</td>
+                          </td>
 
                           <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
                             {duration ? `${duration} day(s)` : "—"}
                           </td>
                         </tr>
-                        </>
                       );
                     })}
                   </tbody>
@@ -609,20 +677,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FancyBg() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10">
-      {/* Clean luxury base */}
       <div className="absolute inset-0 bg-[#F8F6F1]" />
-
-      {/* Deep contrast blobs */}
       <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
       <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
-
-      {/* Subtle radial glow */}
       <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-
-      {/* Elegant vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-
-      {/* Premium grain texture (make sure noise.png is in /public) */}
       <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
     </div>
   );
