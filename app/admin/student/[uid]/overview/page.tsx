@@ -231,7 +231,7 @@ export default function AdminStudentOverviewPage() {
     }
   }, [studentUid]);
 
-  const calendarRows = useMemo(() => buildCalendarRows(rows), [rows]);
+const calendarRows = rows;
 
   const absentsByMonth = useMemo(() => {
     const map: Record<string, number> = {};
@@ -393,7 +393,7 @@ export default function AdminStudentOverviewPage() {
 
       <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
         <div className="grid sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Days counted" value={String(summary.totalDays)} />
+<StatCard label="Days logged" value={String(summary.totalDays)} />
           <StatCard label="Absences (this month)" value={String(currentMonthAbsents)} />
           <StatCard
             label="Average Sabak"
