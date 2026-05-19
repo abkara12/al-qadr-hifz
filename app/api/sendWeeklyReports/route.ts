@@ -707,7 +707,7 @@ May Allah place barakah in this hifdh journey and make the Qur’an a means of s
                       href="${whatsappUrl}"
                       target="_blank"
                       class="btn wa-btn"
-                      onclick="markAsSent('${r.studentId}', '${r.weekKey}')"
+                      onclick="return true;"
                     >
                       Send on WhatsApp
                     </a>`
