@@ -30,16 +30,15 @@ type ReportItem = {
 
 function getStartOfWeek(date = new Date()) {
   const d = new Date(date);
-  const day = d.getDay(); // 0 = Sun, 1 = Mon
-  const diff = day === 0 ? -6 : 1 - day; // Monday start
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
 function formatWeekKey(date = new Date()) {
-  const start = getStartOfWeek(date);
-  return start.toISOString().split("T")[0]; // e.g. 2026-04-20
+  return getStartOfWeek(date).toISOString().split("T")[0];
 }
 
 function normalisePhone(phone?: string) {
@@ -47,12 +46,10 @@ function normalisePhone(phone?: string) {
 
   let cleaned = phone.replace(/\s+/g, "").replace(/[^\d+]/g, "");
 
-  // If starts with 0, convert SA local to international
   if (cleaned.startsWith("0")) {
     cleaned = "27" + cleaned.slice(1);
   }
 
-  // If starts with +, remove it for wa.me
   if (cleaned.startsWith("+")) {
     cleaned = cleaned.slice(1);
   }
@@ -68,6 +65,140 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function getQualityScore(quality?: string) {
+  const q = String(quality || "").toLowerCase();
+
+  if (q.includes("excellent")) return 3;
+  if (q.includes("very good")) return 3;
+  if (q.includes("good")) return 2;
+  if (q.includes("fair")) return 1;
+  if (q.includes("weak")) return 0;
+  if (q.includes("poor")) return 0;
+
+  return 1;
+}
+
+function getOverallWeekLabel(logs: FirebaseFirestore.QueryDocumentSnapshot[]) {
+  if (logs.length === 0) return "No Logs Recorded";
+
+  let total = 0;
+  let count = 0;
+
+  logs.forEach((logDoc) => {
+    const logData = logDoc.data();
+
+    [
+      logData.sabakReadQuality,
+      logData.sabakDhorReadQuality,
+      logData.dhorReadQuality,
+    ].forEach((quality) => {
+      if (quality) {
+        total += getQualityScore(quality);
+        count++;
+      }
+    });
+  });
+
+  const average = count > 0 ? total / count : 1;
+
+  if (logs.length >= 5 && average >= 2.4) return "Excellent";
+  if (logs.length >= 4 && average >= 1.7) return "Good";
+  if (logs.length >= 2) return "Needs Attention";
+
+  return "Requires Consistency";
+}
+
+function getRevisionLabel(logs: FirebaseFirestore.QueryDocumentSnapshot[]) {
+  if (logs.length === 0) return "No revision recorded";
+
+  let total = 0;
+  let count = 0;
+
+  logs.forEach((logDoc) => {
+    const logData = logDoc.data();
+
+    [logData.sabakDhorReadQuality, logData.dhorReadQuality].forEach((quality) => {
+      if (quality) {
+        total += getQualityScore(quality);
+        count++;
+      }
+    });
+  });
+
+  const average = count > 0 ? total / count : 1;
+
+  if (average >= 2.4) return "Strong";
+  if (average >= 1.7) return "Good";
+  return "Needs Attention";
+}
+
+function buildWeeklyReflection({
+  studentName,
+  overallWeek,
+  attendanceCount,
+  revisionLabel,
+  goalCompleted,
+}: {
+  studentName: string;
+  overallWeek: string;
+  attendanceCount: number;
+  revisionLabel: string;
+  goalCompleted: boolean;
+}) {
+  if (overallWeek === "Excellent") {
+    return `Alhamdulillah, ${studentName} had an excellent week. The consistency, effort and progress were very pleasing. May Allah continue to place barakah in this hifdh journey.`;
+  }
+
+  if (overallWeek === "Good") {
+    return `Alhamdulillah, ${studentName} had a good week overall. With a little more consistency and revision at home, even stronger progress can be made, in shaa Allah.`;
+  }
+
+  if (attendanceCount <= 2) {
+    return `${studentName} will benefit greatly from stronger attendance and consistency. Regular attendance is very important for steady hifdh progress.`;
+  }
+
+  if (revisionLabel === "Needs Attention") {
+    return `${studentName} is making effort, but revision needs extra attention. Please assist with revision at home so that the older work remains strong.`;
+  }
+
+  if (!goalCompleted) {
+    return `${studentName} made some progress this week, but the weekly goal was not fully completed. A stronger push next week will help, in shaa Allah.`;
+  }
+
+  return `${studentName} made progress this week. Please continue encouraging consistent preparation and revision at home.`;
+}
+
+function buildParentAction({
+  revisionLabel,
+  goalCompleted,
+  attendanceCount,
+}: {
+  revisionLabel: string;
+  goalCompleted: boolean;
+  attendanceCount: number;
+}) {
+  if (attendanceCount <= 2) {
+    return "Please try to ensure full attendance next week, as consistency is one of the biggest keys to hifdh progress.";
+  }
+
+  if (revisionLabel === "Needs Attention") {
+    return "Please listen to revision over the weekend, especially older dhor, so that the memorised work remains strong.";
+  }
+
+  if (!goalCompleted) {
+    return "Please encourage preparation before class so the weekly goal can be completed next week, in shaa Allah.";
+  }
+
+  return "Please continue encouraging daily revision at home so this beautiful progress continues, in shaa Allah.";
+}
+
 export async function GET() {
   try {
     const usersSnapshot = await db.collection("users").get();
@@ -78,12 +209,21 @@ export async function GET() {
 
     const weekKey = formatWeekKey();
 
+    const weekStart = getStartOfWeek();
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const weekRange = `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data();
 
-      // Skip if already sent for this week
       const sendDocId = `${weekKey}_${userDoc.id}`;
-      const alreadySentDoc = await db.collection("weeklyReportSends").doc(sendDocId).get();
+      const alreadySentDoc = await db
+        .collection("weeklyReportSends")
+        .doc(sendDocId)
+        .get();
+
       if (alreadySentDoc.exists) continue;
 
       const logsSnapshot = await db
@@ -97,85 +237,175 @@ export async function GET() {
         const logData = logDoc.data();
         const createdAt = logData.createdAt;
         if (!createdAt) return false;
+
         const logDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
         return logDate >= sevenDaysAgo;
       });
 
-      let monthLabel = "";
-      if (recentLogs.length > 0) {
-        const firstLog = recentLogs[0].data();
-        const d = firstLog.createdAt?.toDate
-          ? firstLog.createdAt.toDate()
-          : new Date();
-        monthLabel = d.toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        });
-      }
+      const sortedLogsOldestFirst = [...recentLogs].sort((a, b) => {
+        const aDate = a.data().createdAt?.toDate
+          ? a.data().createdAt.toDate().getTime()
+          : 0;
+
+        const bDate = b.data().createdAt?.toDate
+          ? b.data().createdAt.toDate().getTime()
+          : 0;
+
+        return aDate - bDate;
+      });
+
+      const studentName = userData.username ?? "Student";
+
+      const latestLog = recentLogs[0]?.data();
+      const weeklyGoal = latestLog?.weeklyGoal ?? "-";
+      const goalCompleted = !!latestLog?.weeklyGoalCompleted;
+      const goalStatus = goalCompleted ? "Achieved ✅" : "In Progress ⚠️";
+      const duration = latestLog?.weeklyGoalDurationDays ?? "-";
+
+      const attendanceCount = recentLogs.length;
+      const overallWeek = getOverallWeekLabel(recentLogs);
+      const revisionLabel = getRevisionLabel(recentLogs);
+
+      const weeklyReflection = buildWeeklyReflection({
+        studentName,
+        overallWeek,
+        attendanceCount,
+        revisionLabel,
+        goalCompleted,
+      });
+
+      const parentAction = buildParentAction({
+        revisionLabel,
+        goalCompleted,
+        attendanceCount,
+      });
 
       let reportText = `السلام عليكم ورحمة الله وبركاته
 
-*Weekly Hifdh Report*
-*Student:* ${userData.username ?? "-"}
+🌙 *Weekly Hifdh Progress Report*
+
+*Student:* ${studentName}
 *Ustad:* Moulana Shaheed Bhabha
-*Month:* ${monthLabel}
+*Week:* ${weekRange}
+
+━━━━━━━━━━━━━━━━━━
+
+📌 *Weekly Summary*
+
+⭐ *Overall Week:* ${overallWeek}
+📅 *Attendance:* ${attendanceCount}/5 days
+🎯 *Weekly Goal:* ${weeklyGoal}
+✅ *Goal Status:* ${goalStatus}
+📖 *Revision:* ${revisionLabel}
+⏳ *Goal Duration:* ${duration} days
+
+━━━━━━━━━━━━━━━━━━
+
+📝 *Weekly Reflection From Ustad*
+
+${weeklyReflection}
+
+━━━━━━━━━━━━━━━━━━
+
+📌 *Parent Focus For The Weekend*
+
+${parentAction}
 
 `;
 
       if (recentLogs.length > 0) {
-        recentLogs.forEach((logDoc, index) => {
+        reportText += `
+━━━━━━━━━━━━━━━━━━
+
+📚 *Detailed Daily Breakdown*
+
+`;
+
+        sortedLogsOldestFirst.forEach((logDoc, index) => {
           const logData = logDoc.data();
+
           const dateObj = logData.createdAt?.toDate
             ? logData.createdAt.toDate()
             : new Date();
 
           const dayName = dateObj.toLocaleDateString("en-US", {
-            weekday: "short",
+            weekday: "long",
           });
+
           const dateFormatted = dateObj.toLocaleDateString("en-US", {
             day: "numeric",
             month: "short",
           });
 
-          reportText += `*${dayName} ${dateFormatted}*\n\n`;
+          reportText += `📅 *${dayName} - ${dateFormatted}*
 
-          reportText += `*Sabak:* ${logData.sabak ?? "-"} | ${logData.sabakReadQuality ?? "-"}\n`;
+📖 *Sabak*
+${logData.sabak ?? "-"} | ${logData.sabakReadQuality ?? "-"}`;
+
           if (logData.sabakReadNotes) {
-            reportText += `Note: ${logData.sabakReadNotes}\n`;
+            reportText += `
+_Note:_ ${logData.sabakReadNotes}`;
           }
-          reportText += `\n`;
 
-          reportText += `*Sabak Dhor:* ${logData.sabakDhor ?? "-"} | ${logData.sabakDhorReadQuality ?? "-"}\n`;
+          reportText += `
+
+🔁 *Sabak Dhor*
+${logData.sabakDhor ?? "-"} | ${logData.sabakDhorReadQuality ?? "-"}`;
+
           if (logData.sabakDhorReadNotes) {
-            reportText += `Note: ${logData.sabakDhorReadNotes}\n`;
+            reportText += `
+_Note:_ ${logData.sabakDhorReadNotes}`;
           }
-          reportText += `\n`;
 
-          reportText += `*Dhor:* ${logData.dhor ?? "-"} | ${logData.dhorReadQuality ?? "-"}\n`;
+          reportText += `
+
+📚 *Dhor*
+${logData.dhor ?? "-"} | ${logData.dhorReadQuality ?? "-"}`;
+
           if (logData.dhorReadNotes) {
-            reportText += `Note: ${logData.dhorReadNotes}\n`;
+            reportText += `
+_Note:_ ${logData.dhorReadNotes}`;
           }
-          reportText += `\n`;
 
-          if (index !== recentLogs.length - 1) {
-            reportText += `──────────────\n\n`;
+          if (logData.generalNotes) {
+            reportText += `
+
+🗒️ *General Note*
+${logData.generalNotes}`;
+          }
+
+          if (index !== sortedLogsOldestFirst.length - 1) {
+            reportText += `
+
+──────────────
+
+`;
           }
         });
 
-        const latestLog = recentLogs[0].data();
-        const goalStatus = latestLog.weeklyGoalCompleted ? "Completed" : "In Progress";
+        reportText += `
 
-        reportText += `*Weekly Goal:* ${latestLog.weeklyGoal ?? "-"}\n`;
-        reportText += `*Goal Status:* ${goalStatus}\n`;
-        reportText += `Duration: ${latestLog.weeklyGoalDurationDays ?? "-"} days\n\n`;
-        reportText += `────────────────\n*Powered by The Hifdh Journal*`;
+━━━━━━━━━━━━━━━━━━
+
+May Allah place barakah in this hifdh journey and make the Qur’an a means of success in this world and the Aakhirah.
+
+*The Hifdh Journal*`;
       } else {
-        reportText += `No logs recorded for the last 7 days.\n\n────────────────\n*Powered by The Hifdh Journal*`;
+        reportText += `
+━━━━━━━━━━━━━━━━━━
+
+No logs were recorded for this week.
+
+Please ensure daily progress is logged so that parents can receive meaningful weekly feedback.
+
+━━━━━━━━━━━━━━━━━━
+
+*The Hifdh Journal*`;
       }
 
       reports.push({
         studentId: userDoc.id,
-        student: userData.username ?? "Unknown Student",
+        student: studentName,
         parentPhone: normalisePhone(userData.parentPhone),
         report: reportText.trim(),
         weekKey,
@@ -231,6 +461,7 @@ export async function GET() {
               padding: 14px;
               border-radius: 10px;
               border: 1px solid #eee;
+              line-height: 1.55;
             }
             .btn-row {
               display: flex;
@@ -292,7 +523,10 @@ export async function GET() {
         html += `
           <div class="card" id="card-${r.studentId}">
             <div class="student">${escapeHtml(r.student)}</div>
-            <div class="phone">Parent: ${escapeHtml(r.parentPhone || "No parent number saved")}</div>
+            <div class="phone">Parent: ${escapeHtml(
+              r.parentPhone || "No parent number saved"
+            )}</div>
+
             <pre>${escapeHtml(r.report)}</pre>
 
             <div class="btn-row">
@@ -343,6 +577,7 @@ export async function GET() {
                 if (!document.querySelector(".card")) {
                   const wrap = document.querySelector(".wrap");
                   const existingEmpty = document.querySelector(".empty");
+
                   if (!existingEmpty && wrap) {
                     const div = document.createElement("div");
                     div.className = "empty";
