@@ -28,6 +28,8 @@ type ReportItem = {
   weekKey: string;
 };
 
+type LogDoc = FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>;
+
 function getStartOfWeek(date = new Date()) {
   const d = new Date(date);
   const day = d.getDay();
@@ -43,16 +45,10 @@ function formatWeekKey(date = new Date()) {
 
 function normalisePhone(phone?: string) {
   if (!phone) return "";
-
   let cleaned = phone.replace(/\s+/g, "").replace(/[^\d+]/g, "");
 
-  if (cleaned.startsWith("0")) {
-    cleaned = "27" + cleaned.slice(1);
-  }
-
-  if (cleaned.startsWith("+")) {
-    cleaned = cleaned.slice(1);
-  }
+  if (cleaned.startsWith("0")) cleaned = "27" + cleaned.slice(1);
+  if (cleaned.startsWith("+")) cleaned = cleaned.slice(1);
 
   return cleaned;
 }
@@ -65,7 +61,12 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-function formatDate(date: Date) {
+function toDate(value: any) {
+  if (!value) return null;
+  return value.toDate ? value.toDate() : new Date(value);
+}
+
+function formatShortDate(date: Date) {
   return date.toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
@@ -75,128 +76,213 @@ function formatDate(date: Date) {
 function getQualityScore(quality?: string) {
   const q = String(quality || "").toLowerCase();
 
-  if (q.includes("excellent")) return 3;
-  if (q.includes("very good")) return 3;
-  if (q.includes("good")) return 2;
-  if (q.includes("fair")) return 1;
-  if (q.includes("weak")) return 0;
-  if (q.includes("poor")) return 0;
+  if (q.includes("excellent")) return 4;
+  if (q.includes("very good")) return 3.5;
+  if (q.includes("good")) return 3;
+  if (q.includes("fair")) return 2;
+  if (q.includes("weak")) return 1;
+  if (q.includes("poor")) return 0.5;
 
-  return 1;
+  return 2;
 }
 
-function getOverallWeekLabel(logs: FirebaseFirestore.QueryDocumentSnapshot[]) {
+function averageQuality(logs: LogDoc[], fields: string[]) {
+  let total = 0;
+  let count = 0;
+
+  logs.forEach((doc) => {
+    const data = doc.data();
+
+    fields.forEach((field) => {
+      if (data[field]) {
+        total += getQualityScore(data[field]);
+        count++;
+      }
+    });
+  });
+
+  return count ? total / count : 0;
+}
+
+function getOverallWeek(logs: LogDoc[]) {
   if (logs.length === 0) return "No Logs Recorded";
 
-  let total = 0;
-  let count = 0;
+  const avg = averageQuality(logs, [
+    "sabakReadQuality",
+    "sabakDhorReadQuality",
+    "dhorReadQuality",
+  ]);
 
-  logs.forEach((logDoc) => {
-    const logData = logDoc.data();
-
-    [
-      logData.sabakReadQuality,
-      logData.sabakDhorReadQuality,
-      logData.dhorReadQuality,
-    ].forEach((quality) => {
-      if (quality) {
-        total += getQualityScore(quality);
-        count++;
-      }
-    });
-  });
-
-  const average = count > 0 ? total / count : 1;
-
-  if (logs.length >= 5 && average >= 2.4) return "Excellent";
-  if (logs.length >= 4 && average >= 1.7) return "Good";
-  if (logs.length >= 2) return "Needs Attention";
-
-  return "Requires Consistency";
+  if (logs.length >= 5 && avg >= 3.2) return "Outstanding ⭐";
+  if (logs.length >= 5 && avg >= 2.7) return "Excellent";
+  if (logs.length >= 4 && avg >= 2.2) return "Good";
+  if (logs.length >= 3) return "Needs Attention";
+  return "Requires More Consistency";
 }
 
-function getRevisionLabel(logs: FirebaseFirestore.QueryDocumentSnapshot[]) {
+function getRevisionStrength(logs: LogDoc[]) {
   if (logs.length === 0) return "No revision recorded";
 
-  let total = 0;
-  let count = 0;
+  const avg = averageQuality(logs, [
+    "sabakDhorReadQuality",
+    "dhorReadQuality",
+  ]);
 
-  logs.forEach((logDoc) => {
-    const logData = logDoc.data();
-
-    [logData.sabakDhorReadQuality, logData.dhorReadQuality].forEach((quality) => {
-      if (quality) {
-        total += getQualityScore(quality);
-        count++;
-      }
-    });
-  });
-
-  const average = count > 0 ? total / count : 1;
-
-  if (average >= 2.4) return "Strong";
-  if (average >= 1.7) return "Good";
+  if (avg >= 3.2) return "Excellent";
+  if (avg >= 2.7) return "Strong";
+  if (avg >= 2.1) return "Good";
   return "Needs Attention";
 }
 
-function buildWeeklyReflection({
+function getSabakStrength(logs: LogDoc[]) {
+  if (logs.length === 0) return "No sabak recorded";
+
+  const avg = averageQuality(logs, ["sabakReadQuality"]);
+
+  if (avg >= 3.2) return "Excellent";
+  if (avg >= 2.7) return "Strong";
+  if (avg >= 2.1) return "Good";
+  return "Needs Attention";
+}
+
+function compareNumber(current: number, previous: number, label: string) {
+  if (current > previous) return `✅ ${label} improved`;
+  if (current < previous) return `⚠️ ${label} decreased`;
+  return `➖ ${label} stayed the same`;
+}
+
+function getBadges({
+  attendance,
+  goalCompleted,
+  revisionStrength,
+  sabakStrength,
+}: {
+  attendance: number;
+  goalCompleted: boolean;
+  revisionStrength: string;
+  sabakStrength: string;
+}) {
+  const badges: string[] = [];
+
+  if (attendance >= 5) badges.push("🌟 Full Attendance Star");
+  if (goalCompleted) badges.push("🎯 Goal Achiever");
+  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
+    badges.push("📚 Strong Revision Badge");
+  }
+  if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
+    badges.push("📖 Sabak Excellence Badge");
+  }
+  if (badges.length >= 3) badges.push("🔥 Consistency Champion");
+
+  return badges.length ? badges : ["🌱 Building Consistency"];
+}
+
+function buildAutoReflection({
   studentName,
   overallWeek,
-  attendanceCount,
-  revisionLabel,
+  attendance,
   goalCompleted,
+  revisionStrength,
 }: {
   studentName: string;
   overallWeek: string;
-  attendanceCount: number;
-  revisionLabel: string;
+  attendance: number;
   goalCompleted: boolean;
+  revisionStrength: string;
 }) {
-  if (overallWeek === "Excellent") {
-    return `Alhamdulillah, ${studentName} had an excellent week. The consistency, effort and progress were very pleasing. May Allah continue to place barakah in this hifdh journey.`;
+  if (overallWeek.includes("Outstanding") || overallWeek === "Excellent") {
+    return `Alhamdulillah, ${studentName} had a very pleasing week. The consistency, effort and progress shown are signs of a strong hifdh routine. Please continue encouraging daily revision at home so this momentum continues, in shaa Allah.`;
   }
 
-  if (overallWeek === "Good") {
-    return `Alhamdulillah, ${studentName} had a good week overall. With a little more consistency and revision at home, even stronger progress can be made, in shaa Allah.`;
+  if (attendance <= 2) {
+    return `${studentName} will benefit greatly from stronger attendance and consistency. Regular attendance is one of the biggest keys to steady hifdh progress. Please help ensure a stronger routine next week, in shaa Allah.`;
   }
 
-  if (attendanceCount <= 2) {
-    return `${studentName} will benefit greatly from stronger attendance and consistency. Regular attendance is very important for steady hifdh progress.`;
-  }
-
-  if (revisionLabel === "Needs Attention") {
-    return `${studentName} is making effort, but revision needs extra attention. Please assist with revision at home so that the older work remains strong.`;
+  if (revisionStrength === "Needs Attention") {
+    return `${studentName} is making effort, but revision requires extra attention. A few minutes of listening at home daily can make a big difference in strengthening older work.`;
   }
 
   if (!goalCompleted) {
-    return `${studentName} made some progress this week, but the weekly goal was not fully completed. A stronger push next week will help, in shaa Allah.`;
+    return `${studentName} made progress this week, but the weekly goal was not fully completed. With stronger preparation and revision next week, better progress can be achieved, in shaa Allah.`;
   }
 
-  return `${studentName} made progress this week. Please continue encouraging consistent preparation and revision at home.`;
+  return `Alhamdulillah, ${studentName} made steady progress this week. Please continue supporting the hifdh journey at home through encouragement, revision and du'aa.`;
 }
 
-function buildParentAction({
-  revisionLabel,
+function buildParentFocus({
+  attendance,
   goalCompleted,
-  attendanceCount,
+  revisionStrength,
 }: {
-  revisionLabel: string;
+  attendance: number;
   goalCompleted: boolean;
-  attendanceCount: number;
+  revisionStrength: string;
 }) {
-  if (attendanceCount <= 2) {
-    return "Please try to ensure full attendance next week, as consistency is one of the biggest keys to hifdh progress.";
+  if (attendance <= 2) {
+    return "Please focus on full attendance next week. Consistency is one of the strongest foundations for successful hifdh.";
   }
 
-  if (revisionLabel === "Needs Attention") {
-    return "Please listen to revision over the weekend, especially older dhor, so that the memorised work remains strong.";
+  if (revisionStrength === "Needs Attention") {
+    return "Please listen to revision over the weekend, especially older dhor, so the memorised work remains firm.";
   }
 
   if (!goalCompleted) {
     return "Please encourage preparation before class so the weekly goal can be completed next week, in shaa Allah.";
   }
 
-  return "Please continue encouraging daily revision at home so this beautiful progress continues, in shaa Allah.";
+  return "Please continue encouraging daily revision at home. Even a short, consistent routine makes a major difference.";
+}
+
+function calculateGoalStreak(allLogs: LogDoc[]) {
+  let streak = 0;
+
+  const weekMap = new Map<string, boolean>();
+
+  allLogs.forEach((doc) => {
+    const data = doc.data();
+    const date = toDate(data.createdAt);
+    if (!date) return;
+
+    const key = formatWeekKey(date);
+    if (!weekMap.has(key)) {
+      weekMap.set(key, !!data.weeklyGoalCompleted);
+    }
+  });
+
+  const weeks = [...weekMap.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+
+  for (const [, completed] of weeks) {
+    if (completed) streak++;
+    else break;
+  }
+
+  return streak;
+}
+
+function calculateLoggedDayStreak(allLogs: LogDoc[]) {
+  const days = new Set<string>();
+
+  allLogs.forEach((doc) => {
+    const date = toDate(doc.data().createdAt);
+    if (!date) return;
+    days.add(date.toISOString().split("T")[0]);
+  });
+
+  let streak = 0;
+  const cursor = new Date();
+
+  for (let i = 0; i < 60; i++) {
+    const key = cursor.toISOString().split("T")[0];
+
+    if (days.has(key)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return streak;
 }
 
 export async function GET() {
@@ -204,16 +290,19 @@ export async function GET() {
     const usersSnapshot = await db.collection("users").get();
     const reports: ReportItem[] = [];
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
     const weekKey = formatWeekKey();
 
     const weekStart = getStartOfWeek();
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6);
 
-    const weekRange = `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
+    const previousWeekStart = new Date(weekStart);
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+
+    const monthStart = new Date();
+    monthStart.setDate(monthStart.getDate() - 30);
+
+    const weekRange = `${formatShortDate(weekStart)} - ${formatShortDate(weekEnd)}`;
 
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data();
@@ -233,56 +322,95 @@ export async function GET() {
         .orderBy("createdAt", "desc")
         .get();
 
-      const recentLogs = logsSnapshot.docs.filter((logDoc) => {
-        const logData = logDoc.data();
-        const createdAt = logData.createdAt;
-        if (!createdAt) return false;
+      const allLogs = logsSnapshot.docs;
 
-        const logDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
-        return logDate >= sevenDaysAgo;
+      const currentWeekLogs = allLogs.filter((doc) => {
+        const date = toDate(doc.data().createdAt);
+        return date && date >= weekStart && date <= weekEnd;
       });
 
-      const sortedLogsOldestFirst = [...recentLogs].sort((a, b) => {
-        const aDate = a.data().createdAt?.toDate
-          ? a.data().createdAt.toDate().getTime()
-          : 0;
+      const previousWeekLogs = allLogs.filter((doc) => {
+        const date = toDate(doc.data().createdAt);
+        return date && date >= previousWeekStart && date < weekStart;
+      });
 
-        const bDate = b.data().createdAt?.toDate
-          ? b.data().createdAt.toDate().getTime()
-          : 0;
+      const monthlyLogs = allLogs.filter((doc) => {
+        const date = toDate(doc.data().createdAt);
+        return date && date >= monthStart;
+      });
 
+      const sortedCurrentLogs = [...currentWeekLogs].sort((a, b) => {
+        const aDate = toDate(a.data().createdAt)?.getTime() ?? 0;
+        const bDate = toDate(b.data().createdAt)?.getTime() ?? 0;
         return aDate - bDate;
       });
 
       const studentName = userData.username ?? "Student";
+      const latestLog = currentWeekLogs[0]?.data();
 
-      const latestLog = recentLogs[0]?.data();
       const weeklyGoal = latestLog?.weeklyGoal ?? "-";
       const goalCompleted = !!latestLog?.weeklyGoalCompleted;
       const goalStatus = goalCompleted ? "Achieved ✅" : "In Progress ⚠️";
       const duration = latestLog?.weeklyGoalDurationDays ?? "-";
 
-      const attendanceCount = recentLogs.length;
-      const overallWeek = getOverallWeekLabel(recentLogs);
-      const revisionLabel = getRevisionLabel(recentLogs);
+      const attendance = currentWeekLogs.length;
+      const previousAttendance = previousWeekLogs.length;
 
-      const weeklyReflection = buildWeeklyReflection({
+      const overallWeek = getOverallWeek(currentWeekLogs);
+      const revisionStrength = getRevisionStrength(currentWeekLogs);
+      const sabakStrength = getSabakStrength(currentWeekLogs);
+
+      const previousRevisionAvg = averageQuality(previousWeekLogs, [
+        "sabakDhorReadQuality",
+        "dhorReadQuality",
+      ]);
+
+      const currentRevisionAvg = averageQuality(currentWeekLogs, [
+        "sabakDhorReadQuality",
+        "dhorReadQuality",
+      ]);
+
+      const previousSabakAvg = averageQuality(previousWeekLogs, ["sabakReadQuality"]);
+      const currentSabakAvg = averageQuality(currentWeekLogs, ["sabakReadQuality"]);
+
+      const goalStreak = calculateGoalStreak(allLogs);
+      const loggedDayStreak = calculateLoggedDayStreak(allLogs);
+
+      const badges = getBadges({
+        attendance,
+        goalCompleted,
+        revisionStrength,
+        sabakStrength,
+      });
+
+      const autoReflection = buildAutoReflection({
         studentName,
         overallWeek,
-        attendanceCount,
-        revisionLabel,
+        attendance,
         goalCompleted,
+        revisionStrength,
       });
 
-      const parentAction = buildParentAction({
-        revisionLabel,
+      const weeklyReflection =
+        latestLog?.weeklyReflection &&
+        String(latestLog.weeklyReflection).trim().length > 0
+          ? String(latestLog.weeklyReflection).trim()
+          : autoReflection;
+
+      const parentFocus = buildParentFocus({
+        attendance,
         goalCompleted,
-        attendanceCount,
+        revisionStrength,
       });
+
+      const monthlyAttendance = monthlyLogs.length;
+      const monthlyGoalsAchieved = monthlyLogs.filter(
+        (doc) => doc.data().weeklyGoalCompleted
+      ).length;
 
       let reportText = `السلام عليكم ورحمة الله وبركاته
 
-🌙 *Weekly Hifdh Progress Report*
+🌙 *Weekly Hifdh Journey Report*
 
 *Student:* ${studentName}
 *Ustad:* Moulana Shaheed Bhabha
@@ -290,43 +418,74 @@ export async function GET() {
 
 ━━━━━━━━━━━━━━━━━━
 
-📌 *Weekly Summary*
+🏆 *This Week’s Snapshot*
 
 ⭐ *Overall Week:* ${overallWeek}
-📅 *Attendance:* ${attendanceCount}/5 days
+📅 *Attendance:* ${attendance}/5 days
 🎯 *Weekly Goal:* ${weeklyGoal}
 ✅ *Goal Status:* ${goalStatus}
-📖 *Revision:* ${revisionLabel}
+📖 *Sabak Strength:* ${sabakStrength}
+🔁 *Revision Strength:* ${revisionStrength}
 ⏳ *Goal Duration:* ${duration} days
 
 ━━━━━━━━━━━━━━━━━━
 
-📝 *Weekly Reflection From Ustad*
+💬 *Weekly Reflection From Ustad*
 
 ${weeklyReflection}
 
 ━━━━━━━━━━━━━━━━━━
 
-📌 *Parent Focus For The Weekend*
+📈 *Progress Compared To Last Week*
 
-${parentAction}
+${compareNumber(attendance, previousAttendance, "Attendance")}
+${compareNumber(currentSabakAvg, previousSabakAvg, "Sabak quality")}
+${compareNumber(currentRevisionAvg, previousRevisionAvg, "Revision quality")}
+
+━━━━━━━━━━━━━━━━━━
+
+🔥 *Current Streaks*
+
+• ${goalStreak} weekly goal(s) achieved in a row
+• ${loggedDayStreak} consecutive logged day(s)
+
+━━━━━━━━━━━━━━━━━━
+
+🏅 *This Week’s Achievements*
+
+${badges.map((badge) => `• ${badge}`).join("\n")}
+
+━━━━━━━━━━━━━━━━━━
+
+🏡 *Parent Focus For The Weekend*
+
+${parentFocus}
+
+━━━━━━━━━━━━━━━━━━
+
+📊 *Monthly Summary*
+
+📅 Logs Recorded: ${monthlyAttendance}
+🎯 Goals Achieved: ${monthlyGoalsAchieved}
+📖 Strongest Area: ${sabakStrength}
+🔁 Focus Area: ${
+        revisionStrength === "Needs Attention"
+          ? "Older dhor revision"
+          : "Maintain consistency"
+      }
 
 `;
 
-      if (recentLogs.length > 0) {
-        reportText += `
-━━━━━━━━━━━━━━━━━━
+      if (currentWeekLogs.length > 0) {
+        reportText += `━━━━━━━━━━━━━━━━━━
 
 📚 *Detailed Daily Breakdown*
 
 `;
 
-        sortedLogsOldestFirst.forEach((logDoc, index) => {
+        sortedCurrentLogs.forEach((logDoc, index) => {
           const logData = logDoc.data();
-
-          const dateObj = logData.createdAt?.toDate
-            ? logData.createdAt.toDate()
-            : new Date();
+          const dateObj = toDate(logData.createdAt) ?? new Date();
 
           const dayName = dateObj.toLocaleDateString("en-US", {
             weekday: "long",
@@ -374,7 +533,7 @@ _Note:_ ${logData.dhorReadNotes}`;
 ${logData.generalNotes}`;
           }
 
-          if (index !== sortedLogsOldestFirst.length - 1) {
+          if (index !== sortedCurrentLogs.length - 1) {
             reportText += `
 
 ──────────────
@@ -382,26 +541,31 @@ ${logData.generalNotes}`;
 `;
           }
         });
+      } else {
+        reportText += `━━━━━━━━━━━━━━━━━━
 
-        reportText += `
+No logs were recorded this week.
+
+Please ensure daily progress is logged so parents can receive meaningful weekly feedback.`;
+      }
+
+      reportText += `
+
+━━━━━━━━━━━━━━━━━━
+
+💬 *Parent Reply Options*
+
+You may reply with:
+
+1️⃣ Concern  
+2️⃣ Appreciation  
+3️⃣ Question for Ustad  
 
 ━━━━━━━━━━━━━━━━━━
 
 May Allah place barakah in this hifdh journey and make the Qur’an a means of success in this world and the Aakhirah.
 
 *The Hifdh Journal*`;
-      } else {
-        reportText += `
-━━━━━━━━━━━━━━━━━━
-
-No logs were recorded for this week.
-
-Please ensure daily progress is logged so that parents can receive meaningful weekly feedback.
-
-━━━━━━━━━━━━━━━━━━
-
-*The Hifdh Journal*`;
-      }
 
       reports.push({
         studentId: userDoc.id,
@@ -570,9 +734,7 @@ Please ensure daily progress is logged so that parents can receive meaningful we
                 });
 
                 const card = document.getElementById("card-" + studentId);
-                if (card) {
-                  card.remove();
-                }
+                if (card) card.remove();
 
                 if (!document.querySelector(".card")) {
                   const wrap = document.querySelector(".wrap");
@@ -586,7 +748,7 @@ Please ensure daily progress is logged so that parents can receive meaningful we
                   }
                 }
               } catch (error) {
-                console.error("Failed to mark as sent", error);
+                console.error("Failed to mark report as sent", error);
               }
             }
           </script>
