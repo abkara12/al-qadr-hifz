@@ -28,7 +28,8 @@ type ReportItem = {
   weekKey: string;
 };
 
-type LogDoc = FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>;
+type LogDoc =
+  FirebaseFirestore.QueryDocumentSnapshot<FirebaseFirestore.DocumentData>;
 
 function getStartOfWeek(date = new Date()) {
   const d = new Date(date);
@@ -61,6 +62,11 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
+function toText(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return typeof value === "string" ? value.trim() : String(value).trim();
+}
+
 function toDate(value: any) {
   if (!value) return null;
   return value.toDate ? value.toDate() : new Date(value);
@@ -73,8 +79,16 @@ function formatShortDate(date: Date) {
   });
 }
 
+function isAbsentDoc(doc: LogDoc) {
+  return toText(doc.data().attendance).toLowerCase().includes("absent");
+}
+
+function hasAnyText(...values: unknown[]) {
+  return values.some((value) => Boolean(toText(value)));
+}
+
 function getQualityScore(quality?: string) {
-  const q = String(quality || "").toLowerCase();
+  const q = toText(quality).toLowerCase();
 
   if (q.includes("excellent")) return 4;
   if (q.includes("very good")) return 3.5;
@@ -90,199 +104,529 @@ function averageQuality(logs: LogDoc[], fields: string[]) {
   let total = 0;
   let count = 0;
 
-  logs.forEach((doc) => {
-    const data = doc.data();
+  logs
+    .filter((doc) => !isAbsentDoc(doc))
+    .forEach((doc) => {
+      const data = doc.data();
 
-    fields.forEach((field) => {
-      if (data[field]) {
-        total += getQualityScore(data[field]);
-        count++;
-      }
+      fields.forEach((field) => {
+        if (data[field]) {
+          total += getQualityScore(data[field]);
+          count++;
+        }
+      });
     });
-  });
 
   return count ? total / count : 0;
 }
 
+function getPresentLogs(logs: LogDoc[]) {
+  return logs.filter((doc) => !isAbsentDoc(doc));
+}
+
 function getOverallWeek(logs: LogDoc[]) {
-  if (logs.length === 0) return "No Logs Recorded";
+  if (!logs.length) return "No Logs Recorded";
+
+  const presentLogs = getPresentLogs(logs);
 
   const avg = averageQuality(logs, [
     "sabakReadQuality",
+    "sabakRead",
     "sabakDhorReadQuality",
+    "sabakDhorRead",
     "dhorReadQuality",
+    "dhorRead",
   ]);
 
-  if (logs.length >= 5 && avg >= 3.2) return "Outstanding ⭐";
-  if (logs.length >= 5 && avg >= 2.7) return "Excellent";
-  if (logs.length >= 4 && avg >= 2.2) return "Good";
-  if (logs.length >= 3) return "Needs Attention";
-  return "Requires More Consistency";
-}
+  if (presentLogs.length >= 5 && avg >= 3.2) return "Outstanding ⭐";
+  if (presentLogs.length >= 5 && avg >= 2.7) return "Excellent";
+  if (presentLogs.length >= 4 && avg >= 2.2) return "Good";
+  if (presentLogs.length >= 3) return "Building Consistency";
 
-function getRevisionStrength(logs: LogDoc[]) {
-  if (logs.length === 0) return "No revision recorded";
-
-  const avg = averageQuality(logs, [
-    "sabakDhorReadQuality",
-    "dhorReadQuality",
-  ]);
-
-  if (avg >= 3.2) return "Excellent";
-  if (avg >= 2.7) return "Strong";
-  if (avg >= 2.1) return "Good";
-  return "Needs Attention";
+  return "Needs More Consistency";
 }
 
 function getSabakStrength(logs: LogDoc[]) {
-  if (logs.length === 0) return "No sabak recorded";
-
-  const avg = averageQuality(logs, ["sabakReadQuality"]);
+  const avg = averageQuality(logs, ["sabakReadQuality", "sabakRead"]);
 
   if (avg >= 3.2) return "Excellent";
   if (avg >= 2.7) return "Strong";
   if (avg >= 2.1) return "Good";
-  return "Needs Attention";
+
+  return "Can Improve";
+}
+
+function getSabakDhorStrength(logs: LogDoc[]) {
+  const avg = averageQuality(logs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+
+  if (avg >= 3.2) return "Excellent";
+  if (avg >= 2.7) return "Strong";
+  if (avg >= 2.1) return "Good";
+
+  return "Needs More Attention";
+}
+
+function getDhorStrength(logs: LogDoc[]) {
+  const avg = averageQuality(logs, ["dhorReadQuality", "dhorRead"]);
+
+  if (avg >= 3.2) return "Excellent";
+  if (avg >= 2.7) return "Strong";
+  if (avg >= 2.1) return "Good";
+
+  return "Needs More Attention";
 }
 
 function compareNumber(current: number, previous: number, label: string) {
+  if (!previous && current) return `✅ ${label} started strongly`;
   if (current > previous) return `✅ ${label} improved`;
-  if (current < previous) return `⚠️ ${label} decreased`;
-  return `➖ ${label} stayed the same`;
+  if (current < previous) return `⚠️ ${label} needs more attention`;
+  return `➖ ${label} remained steady`;
 }
 
-function getBadges({
+function getTeacherNotesFromLogs(logs: LogDoc[]) {
+  return logs
+    .map((doc) => toText(doc.data().generalNotes))
+    .filter(Boolean)
+    .slice(0, 2);
+}
+
+function getMistakeFocus(logs: LogDoc[]) {
+  const hasSabakDhorMistakes = logs.some((doc) =>
+    toText(doc.data().sabakDhorMistakes)
+  );
+
+  const hasDhorMistakes = logs.some((doc) => toText(doc.data().dhorMistakes));
+
+  if (hasSabakDhorMistakes && hasDhorMistakes) {
+    return "Some mistakes were noted in both sabak dhor and dhor revision, so extra listening and correction at home will be beneficial.";
+  }
+
+  if (hasDhorMistakes) {
+    return "Some dhor revision mistakes were noted, so older revision should be given extra attention.";
+  }
+
+  if (hasSabakDhorMistakes) {
+    return "Some sabak dhor mistakes were noted, so recent revision should be strengthened.";
+  }
+
+  return "";
+}
+
+function buildTeacherHighlight({
   attendance,
   goalCompleted,
-  revisionStrength,
   sabakStrength,
+  sabakDhorStrength,
+  dhorStrength,
+  previousLogs,
+  currentLogs,
 }: {
   attendance: number;
   goalCompleted: boolean;
-  revisionStrength: string;
   sabakStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
+  previousLogs: LogDoc[];
+  currentLogs: LogDoc[];
 }) {
-  const badges: string[] = [];
+  const teacherNotes = getTeacherNotesFromLogs(currentLogs);
 
-  if (attendance >= 5) badges.push("🌟 Full Attendance Star");
-  if (goalCompleted) badges.push("🎯 Goal Achiever");
-  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
-    badges.push("📚 Strong Revision Badge");
+  if (teacherNotes.length) {
+    const note = teacherNotes[0];
+    return note.length <= 120 ? note : `${note.slice(0, 120).trim()}...`;
   }
+
+  const currentSabakAvg = averageQuality(currentLogs, [
+    "sabakReadQuality",
+    "sabakRead",
+  ]);
+  const previousSabakAvg = averageQuality(previousLogs, [
+    "sabakReadQuality",
+    "sabakRead",
+  ]);
+
+  const currentSabakDhorAvg = averageQuality(currentLogs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+  const previousSabakDhorAvg = averageQuality(previousLogs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+
+  const currentDhorAvg = averageQuality(currentLogs, [
+    "dhorReadQuality",
+    "dhorRead",
+  ]);
+  const previousDhorAvg = averageQuality(previousLogs, [
+    "dhorReadQuality",
+    "dhorRead",
+  ]);
+
+  const sabakImproved =
+    previousLogs.length > 0 && currentSabakAvg > previousSabakAvg;
+  const sabakDhorImproved =
+    previousLogs.length > 0 && currentSabakDhorAvg > previousSabakDhorAvg;
+  const dhorImproved =
+    previousLogs.length > 0 && currentDhorAvg > previousDhorAvg;
+
+  const hasSabakDhorMistakes = currentLogs.some((doc) =>
+    toText(doc.data().sabakDhorMistakes)
+  );
+  const hasDhorMistakes = currentLogs.some((doc) =>
+    toText(doc.data().dhorMistakes)
+  );
+
+  if (
+    attendance >= 5 &&
+    goalCompleted &&
+    sabakImproved &&
+    sabakDhorImproved &&
+    dhorImproved
+  ) {
+    return "Excellent improvement noticed across sabak, sabak dhor and dhor revision this week.";
+  }
+
+  if (sabakImproved) {
+    return "A noticeable improvement was seen in sabak preparation this week.";
+  }
+
+  if (sabakDhorImproved) {
+    return "Recent revision improved noticeably this week.";
+  }
+
+  if (dhorImproved) {
+    return "Older dhor revision showed pleasing improvement this week.";
+  }
+
+  if (attendance >= 5 && goalCompleted) {
+    return "Very pleasing consistency in attendance, preparation and weekly goal completion.";
+  }
+
   if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
-    badges.push("📖 Sabak Excellence Badge");
+    return "Sabak preparation was a pleasing area this week.";
   }
-  if (badges.length >= 3) badges.push("🔥 Consistency Champion");
 
-  return badges.length ? badges : ["🌱 Building Consistency"];
+  if (sabakDhorStrength === "Excellent" || sabakDhorStrength === "Strong") {
+    return "Sabak dhor was firm and pleasing this week.";
+  }
+
+  if (dhorStrength === "Excellent" || dhorStrength === "Strong") {
+    return "Older dhor revision was a strong point this week.";
+  }
+
+  if (attendance <= 2) {
+    return "A stronger attendance routine will help progress improve further.";
+  }
+
+  if (hasDhorMistakes) {
+    return "Extra attention to older dhor revision will help strengthen retention.";
+  }
+
+  if (hasSabakDhorMistakes) {
+    return "Recent revision needs a little more strengthening and consistency.";
+  }
+
+  return "Steady effort was shown this week, with room to build further.";
 }
 
 function buildAutoReflection({
   studentName,
-  overallWeek,
   attendance,
   goalCompleted,
-  revisionStrength,
+  sabakStrength,
+  sabakDhorStrength,
+  dhorStrength,
+  previousLogs,
+  currentLogs,
 }: {
   studentName: string;
-  overallWeek: string;
   attendance: number;
   goalCompleted: boolean;
-  revisionStrength: string;
+  sabakStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
+  previousLogs: LogDoc[];
+  currentLogs: LogDoc[];
 }) {
-  if (overallWeek.includes("Outstanding") || overallWeek === "Excellent") {
-    return `Alhamdulillah, ${studentName} had a very pleasing week. The consistency, effort and progress shown are signs of a strong hifdh routine. Please continue encouraging daily revision at home so this momentum continues, in shaa Allah.`;
+  const notes = getTeacherNotesFromLogs(currentLogs);
+  const mistakeFocus = getMistakeFocus(currentLogs);
+
+  const currentSabakAvg = averageQuality(currentLogs, [
+    "sabakReadQuality",
+    "sabakRead",
+  ]);
+  const previousSabakAvg = averageQuality(previousLogs, [
+    "sabakReadQuality",
+    "sabakRead",
+  ]);
+
+  const currentSabakDhorAvg = averageQuality(currentLogs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+  const previousSabakDhorAvg = averageQuality(previousLogs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+
+  const currentDhorAvg = averageQuality(currentLogs, [
+    "dhorReadQuality",
+    "dhorRead",
+  ]);
+  const previousDhorAvg = averageQuality(previousLogs, [
+    "dhorReadQuality",
+    "dhorRead",
+  ]);
+
+  const sabakImproved =
+    previousLogs.length > 0 && currentSabakAvg > previousSabakAvg;
+  const sabakDhorImproved =
+    previousLogs.length > 0 && currentSabakDhorAvg > previousSabakDhorAvg;
+  const dhorImproved =
+    previousLogs.length > 0 && currentDhorAvg > previousDhorAvg;
+
+  let reflection = "";
+
+  if (notes.length) {
+    reflection = `Alhamdulillah, ${studentName} had helpful feedback noted during the week. ${notes.join(
+      " "
+    )} Please continue supporting this progress at home through encouragement and daily revision.`;
+  } else if (
+    attendance >= 5 &&
+    goalCompleted &&
+    sabakDhorStrength !== "Needs More Attention" &&
+    dhorStrength !== "Needs More Attention"
+  ) {
+    reflection = `Alhamdulillah, ${studentName} had a strong and pleasing week. The consistency in attendance, completion of the weekly goal, sabak dhor and dhor revision show good effort and commitment.`;
+  } else if (attendance <= 2) {
+    reflection = `${studentName} will benefit greatly from a stronger attendance routine. With more consistent attendance, it will become easier to build momentum and make steady hifdh progress, in shaa Allah.`;
+  } else if (dhorStrength === "Needs More Attention") {
+    reflection = `${studentName} is making effort, but older dhor revision needs more attention. Strengthening older work through short, regular listening at home will help the memorised portions become firmer.`;
+  } else if (sabakDhorStrength === "Needs More Attention") {
+    reflection = `${studentName} is making effort, but sabak dhor needs more consistency. Strengthening recent revision will help the new work remain firm.`;
+  } else if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
+    reflection = `Alhamdulillah, ${studentName} showed pleasing effort in sabak this week. If the same attention continues with sabak dhor and dhor revision, the overall hifdh routine will become much stronger.`;
+  } else if (!goalCompleted) {
+    reflection = `${studentName} made some progress this week, but the weekly goal was not fully completed. A little more preparation before class can help next week’s goal become easier to reach, in shaa Allah.`;
+  } else {
+    reflection = `Alhamdulillah, ${studentName} made steady progress this week. The main focus now is to keep building consistency so that sabak, sabak dhor and dhor revision continue improving together.`;
   }
 
-  if (attendance <= 2) {
-    return `${studentName} will benefit greatly from stronger attendance and consistency. Regular attendance is one of the biggest keys to steady hifdh progress. Please help ensure a stronger routine next week, in shaa Allah.`;
+  if (sabakImproved && sabakDhorImproved && dhorImproved) {
+    reflection += ` It is also pleasing to see improvement in sabak, sabak dhor and dhor revision compared to last week.`;
+  } else if (sabakImproved) {
+    reflection += ` There was also a positive improvement in sabak compared to last week.`;
+  } else if (sabakDhorImproved) {
+    reflection += ` There was also a positive improvement in sabak dhor compared to last week.`;
+  } else if (dhorImproved) {
+    reflection += ` There was also a positive improvement in dhor revision compared to last week.`;
   }
 
-  if (revisionStrength === "Needs Attention") {
-    return `${studentName} is making effort, but revision requires extra attention. A few minutes of listening at home daily can make a big difference in strengthening older work.`;
-  }
+  if (mistakeFocus) reflection += ` ${mistakeFocus}`;
 
-  if (!goalCompleted) {
-    return `${studentName} made progress this week, but the weekly goal was not fully completed. With stronger preparation and revision next week, better progress can be achieved, in shaa Allah.`;
-  }
-
-  return `Alhamdulillah, ${studentName} made steady progress this week. Please continue supporting the hifdh journey at home through encouragement, revision and du'aa.`;
+  return reflection;
 }
 
-function buildParentFocus({
+function buildWhatWentWell({
   attendance,
   goalCompleted,
-  revisionStrength,
+  sabakStrength,
+  sabakDhorStrength,
+  dhorStrength,
 }: {
   attendance: number;
   goalCompleted: boolean;
-  revisionStrength: string;
+  sabakStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
 }) {
-  if (attendance <= 2) {
-    return "Please focus on full attendance next week. Consistency is one of the strongest foundations for successful hifdh.";
+  const points: string[] = [];
+
+  if (attendance >= 5) points.push("Full attendance was maintained.");
+  else if (attendance >= 4) points.push("Attendance was good overall.");
+
+  if (goalCompleted) points.push("The weekly goal was completed.");
+
+  if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
+    points.push("Sabak was a pleasing area this week.");
   }
 
-  if (revisionStrength === "Needs Attention") {
-    return "Please listen to revision over the weekend, especially older dhor, so the memorised work remains firm.";
+  if (sabakDhorStrength === "Excellent" || sabakDhorStrength === "Strong") {
+    points.push("Sabak dhor showed good strength.");
   }
 
-  if (!goalCompleted) {
-    return "Please encourage preparation before class so the weekly goal can be completed next week, in shaa Allah.";
+  if (dhorStrength === "Excellent" || dhorStrength === "Strong") {
+    points.push("Dhor revision was firm this week.");
   }
 
-  return "Please continue encouraging daily revision at home. Even a short, consistent routine makes a major difference.";
+  if (!points.length) {
+    points.push("Effort was made, and there is room to build further next week.");
+  }
+
+  return points;
 }
 
-function calculateGoalStreak(allLogs: LogDoc[]) {
-  let streak = 0;
+function buildFocusForNextWeek({
+  attendance,
+  goalCompleted,
+  sabakStrength,
+  sabakDhorStrength,
+  dhorStrength,
+}: {
+  attendance: number;
+  goalCompleted: boolean;
+  sabakStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
+}) {
+  const points: string[] = [];
 
-  const weekMap = new Map<string, boolean>();
+  if (attendance <= 3) points.push("Work towards stronger attendance and routine.");
+  if (!goalCompleted) points.push("Prepare earlier so the weekly goal can be completed.");
+  if (sabakStrength === "Can Improve") points.push("Strengthen sabak preparation before class.");
+  if (sabakDhorStrength === "Needs More Attention") points.push("Give extra attention to sabak dhor.");
+  if (dhorStrength === "Needs More Attention") points.push("Give extra attention to older dhor revision.");
 
-  allLogs.forEach((doc) => {
-    const data = doc.data();
-    const date = toDate(data.createdAt);
-    if (!date) return;
-
-    const key = formatWeekKey(date);
-    if (!weekMap.has(key)) {
-      weekMap.set(key, !!data.weeklyGoalCompleted);
-    }
-  });
-
-  const weeks = [...weekMap.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-
-  for (const [, completed] of weeks) {
-    if (completed) streak++;
-    else break;
+  if (!points.length) {
+    points.push("Continue daily revision so the progress remains firm.");
   }
 
-  return streak;
+  return points;
 }
 
-function calculateLoggedDayStreak(allLogs: LogDoc[]) {
-  const days = new Set<string>();
+function buildDailyBreakdown(logDoc: LogDoc) {
+  const data = logDoc.data();
+  const dateObj = toDate(data.createdAt) ?? new Date();
 
-  allLogs.forEach((doc) => {
-    const date = toDate(doc.data().createdAt);
-    if (!date) return;
-    days.add(date.toISOString().split("T")[0]);
+  const dayName = dateObj.toLocaleDateString("en-US", {
+    weekday: "long",
   });
 
-  let streak = 0;
-  const cursor = new Date();
+  const dateFormatted = dateObj.toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+  });
 
-  for (let i = 0; i < 60; i++) {
-    const key = cursor.toISOString().split("T")[0];
+  if (isAbsentDoc(logDoc)) {
+    return `📅 *${dayName} - ${dateFormatted}*
 
-    if (days.has(key)) {
-      streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    } else {
-      break;
+❌ *Absent*`;
+  }
+
+  let dayText = `📅 *${dayName} - ${dateFormatted}*`;
+  let hasDetails = false;
+
+  if (
+    hasAnyText(
+      data.sabak,
+      data.sabakReadQuality,
+      data.sabakRead,
+      data.sabakReadNotes
+    )
+  ) {
+    hasDetails = true;
+
+    dayText += `
+
+📖 *Sabak*
+${toText(data.sabak) || "Not specified"}`;
+
+    const quality = toText(data.sabakReadQuality) || toText(data.sabakRead);
+    if (quality) dayText += ` | ${quality}`;
+
+    if (toText(data.sabakReadNotes)) {
+      dayText += `
+_Note:_ ${toText(data.sabakReadNotes)}`;
     }
   }
 
-  return streak;
+  if (
+    hasAnyText(
+      data.sabakDhor,
+      data.sabakDhorReadQuality,
+      data.sabakDhorRead,
+      data.sabakDhorReadNotes,
+      data.sabakDhorMistakes
+    )
+  ) {
+    hasDetails = true;
+
+    dayText += `
+
+🔁 *Sabak Dhor*
+${toText(data.sabakDhor) || "Not specified"}`;
+
+    const quality =
+      toText(data.sabakDhorReadQuality) || toText(data.sabakDhorRead);
+    if (quality) dayText += ` | ${quality}`;
+
+    if (toText(data.sabakDhorReadNotes)) {
+      dayText += `
+_Note:_ ${toText(data.sabakDhorReadNotes)}`;
+    }
+
+    if (toText(data.sabakDhorMistakes)) {
+      dayText += `
+
+⚠️ *Sabak Dhor Mistakes*
+${toText(data.sabakDhorMistakes)}`;
+    }
+  }
+
+  if (
+    hasAnyText(
+      data.dhor,
+      data.dhorReadQuality,
+      data.dhorRead,
+      data.dhorReadNotes,
+      data.dhorMistakes
+    )
+  ) {
+    hasDetails = true;
+
+    dayText += `
+
+📚 *Dhor Revision*
+${toText(data.dhor) || "Not specified"}`;
+
+    const quality = toText(data.dhorReadQuality) || toText(data.dhorRead);
+    if (quality) dayText += ` | ${quality}`;
+
+    if (toText(data.dhorReadNotes)) {
+      dayText += `
+_Note:_ ${toText(data.dhorReadNotes)}`;
+    }
+
+    if (toText(data.dhorMistakes)) {
+      dayText += `
+
+⚠️ *Dhor Revision Mistakes*
+${toText(data.dhorMistakes)}`;
+    }
+  }
+
+  if (toText(data.generalNotes)) {
+    hasDetails = true;
+
+    dayText += `
+
+🗒️ *General Note*
+${toText(data.generalNotes)}`;
+  }
+
+  if (!hasDetails) {
+    dayText += `
+
+✅ *Present*
+
+No detailed progress was logged for this day.`;
+  }
+
+  return dayText;
 }
 
 export async function GET() {
@@ -299,10 +643,9 @@ export async function GET() {
     const previousWeekStart = new Date(weekStart);
     previousWeekStart.setDate(previousWeekStart.getDate() - 7);
 
-    const monthStart = new Date();
-    monthStart.setDate(monthStart.getDate() - 30);
-
-    const weekRange = `${formatShortDate(weekStart)} - ${formatShortDate(weekEnd)}`;
+    const weekRange = `${formatShortDate(weekStart)} - ${formatShortDate(
+      weekEnd
+    )}`;
 
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data();
@@ -334,11 +677,6 @@ export async function GET() {
         return date && date >= previousWeekStart && date < weekStart;
       });
 
-      const monthlyLogs = allLogs.filter((doc) => {
-        const date = toDate(doc.data().createdAt);
-        return date && date >= monthStart;
-      });
-
       const sortedCurrentLogs = [...currentWeekLogs].sort((a, b) => {
         const aDate = toDate(a.data().createdAt)?.getTime() ?? 0;
         const bDate = toDate(b.data().createdAt)?.getTime() ?? 0;
@@ -348,69 +686,87 @@ export async function GET() {
       const studentName = userData.username ?? "Student";
       const latestLog = currentWeekLogs[0]?.data();
 
-      const weeklyGoal = latestLog?.weeklyGoal ?? "-";
+      const weeklyGoal = toText(latestLog?.weeklyGoal) || "-";
       const goalCompleted = !!latestLog?.weeklyGoalCompleted;
-      const goalStatus = goalCompleted ? "Achieved ✅" : "In Progress ⚠️";
-      const duration = latestLog?.weeklyGoalDurationDays ?? "-";
+      const goalStatus = goalCompleted ? "Completed ✅" : "Still In Progress";
 
-      const attendance = currentWeekLogs.length;
-      const previousAttendance = previousWeekLogs.length;
+      const attendance = getPresentLogs(currentWeekLogs).length;
+      const previousAttendance = getPresentLogs(previousWeekLogs).length;
 
       const overallWeek = getOverallWeek(currentWeekLogs);
-      const revisionStrength = getRevisionStrength(currentWeekLogs);
       const sabakStrength = getSabakStrength(currentWeekLogs);
+      const sabakDhorStrength = getSabakDhorStrength(currentWeekLogs);
+      const dhorStrength = getDhorStrength(currentWeekLogs);
 
-      const previousRevisionAvg = averageQuality(previousWeekLogs, [
-        "sabakDhorReadQuality",
-        "dhorReadQuality",
+      const currentSabakAvg = averageQuality(currentWeekLogs, [
+        "sabakReadQuality",
+        "sabakRead",
+      ]);
+      const previousSabakAvg = averageQuality(previousWeekLogs, [
+        "sabakReadQuality",
+        "sabakRead",
       ]);
 
-      const currentRevisionAvg = averageQuality(currentWeekLogs, [
+      const currentSabakDhorAvg = averageQuality(currentWeekLogs, [
         "sabakDhorReadQuality",
-        "dhorReadQuality",
+        "sabakDhorRead",
+      ]);
+      const previousSabakDhorAvg = averageQuality(previousWeekLogs, [
+        "sabakDhorReadQuality",
+        "sabakDhorRead",
       ]);
 
-      const previousSabakAvg = averageQuality(previousWeekLogs, ["sabakReadQuality"]);
-      const currentSabakAvg = averageQuality(currentWeekLogs, ["sabakReadQuality"]);
-
-      const goalStreak = calculateGoalStreak(allLogs);
-      const loggedDayStreak = calculateLoggedDayStreak(allLogs);
-
-      const badges = getBadges({
-        attendance,
-        goalCompleted,
-        revisionStrength,
-        sabakStrength,
-      });
-
-      const autoReflection = buildAutoReflection({
-        studentName,
-        overallWeek,
-        attendance,
-        goalCompleted,
-        revisionStrength,
-      });
+      const currentDhorAvg = averageQuality(currentWeekLogs, [
+        "dhorReadQuality",
+        "dhorRead",
+      ]);
+      const previousDhorAvg = averageQuality(previousWeekLogs, [
+        "dhorReadQuality",
+        "dhorRead",
+      ]);
 
       const weeklyReflection =
-        latestLog?.weeklyReflection &&
-        String(latestLog.weeklyReflection).trim().length > 0
-          ? String(latestLog.weeklyReflection).trim()
-          : autoReflection;
+        toText(latestLog?.weeklyReflection) ||
+        buildAutoReflection({
+          studentName,
+          attendance,
+          goalCompleted,
+          sabakStrength,
+          sabakDhorStrength,
+          dhorStrength,
+          previousLogs: previousWeekLogs,
+          currentLogs: currentWeekLogs,
+        });
 
-      const parentFocus = buildParentFocus({
+      const teacherHighlight = buildTeacherHighlight({
         attendance,
         goalCompleted,
-        revisionStrength,
+        sabakStrength,
+        sabakDhorStrength,
+        dhorStrength,
+        previousLogs: previousWeekLogs,
+        currentLogs: currentWeekLogs,
       });
 
-      const monthlyAttendance = monthlyLogs.length;
-      const monthlyGoalsAchieved = monthlyLogs.filter(
-        (doc) => doc.data().weeklyGoalCompleted
-      ).length;
+      const whatWentWell = buildWhatWentWell({
+        attendance,
+        goalCompleted,
+        sabakStrength,
+        sabakDhorStrength,
+        dhorStrength,
+      });
+
+      const focusForNextWeek = buildFocusForNextWeek({
+        attendance,
+        goalCompleted,
+        sabakStrength,
+        sabakDhorStrength,
+        dhorStrength,
+      });
 
       let reportText = `السلام عليكم ورحمة الله وبركاته
 
-🌙 *Weekly Hifdh Journey Report*
+🌙 *Weekly Hifdh Progress Report*
 
 *Student:* ${studentName}
 *Ustad:* Moulana Shaheed Bhabha
@@ -418,129 +774,65 @@ export async function GET() {
 
 ━━━━━━━━━━━━━━━━━━
 
-🏆 *This Week’s Snapshot*
+🌟 *Teacher Highlight*
 
-⭐ *Overall Week:* ${overallWeek}
-📅 *Attendance:* ${attendance}/5 days
-🎯 *Weekly Goal:* ${weeklyGoal}
-✅ *Goal Status:* ${goalStatus}
-📖 *Sabak Strength:* ${sabakStrength}
-🔁 *Revision Strength:* ${revisionStrength}
-⏳ *Goal Duration:* ${duration} days
+${teacherHighlight}
 
 ━━━━━━━━━━━━━━━━━━
 
-💬 *Weekly Reflection From Ustad*
+🏆 *This Week At A Glance*
+
+⭐ *Overall:* ${overallWeek}
+📅 *Attendance:* ${attendance}/5 days
+🎯 *Weekly Goal:* ${weeklyGoal}
+✅ *Goal Status:* ${goalStatus}
+📖 *Sabak:* ${sabakStrength}
+🔁 *Sabak Dhor:* ${sabakDhorStrength}
+📚 *Dhor Revision:* ${dhorStrength}
+
+━━━━━━━━━━━━━━━━━━
+
+💬 *Teacher’s Reflection*
 
 ${weeklyReflection}
 
 ━━━━━━━━━━━━━━━━━━
 
-📈 *Progress Compared To Last Week*
+✅ *What Went Well*
 
-${compareNumber(attendance, previousAttendance, "Attendance")}
-${compareNumber(currentSabakAvg, previousSabakAvg, "Sabak quality")}
-${compareNumber(currentRevisionAvg, previousRevisionAvg, "Revision quality")}
+${whatWentWell.map((point) => `• ${point}`).join("\n")}
 
 ━━━━━━━━━━━━━━━━━━
 
-🔥 *Current Streaks*
+🎯 *Focus For Next Week*
 
-• ${goalStreak} weekly goal(s) achieved in a row
-• ${loggedDayStreak} consecutive logged day(s)
-
-━━━━━━━━━━━━━━━━━━
-
-🏅 *This Week’s Achievements*
-
-${badges.map((badge) => `• ${badge}`).join("\n")}
-
-━━━━━━━━━━━━━━━━━━
-
-🏡 *Parent Focus For The Weekend*
-
-${parentFocus}
-
-━━━━━━━━━━━━━━━━━━
-
-📊 *Monthly Summary*
-
-📅 Logs Recorded: ${monthlyAttendance}
-🎯 Goals Achieved: ${monthlyGoalsAchieved}
-📖 Strongest Area: ${sabakStrength}
-🔁 Focus Area: ${
-        revisionStrength === "Needs Attention"
-          ? "Older dhor revision"
-          : "Maintain consistency"
-      }
+${focusForNextWeek.map((point) => `• ${point}`).join("\n")}
 
 `;
+
+      if (previousWeekLogs.length) {
+        reportText += `━━━━━━━━━━━━━━━━━━
+
+📈 *Compared To Last Week*
+
+${compareNumber(attendance, previousAttendance, "Attendance")}
+${compareNumber(currentSabakAvg, previousSabakAvg, "Sabak")}
+${compareNumber(currentSabakDhorAvg, previousSabakDhorAvg, "Sabak Dhor")}
+${compareNumber(currentDhorAvg, previousDhorAvg, "Dhor Revision")}
+
+`;
+      }
 
       if (currentWeekLogs.length > 0) {
         reportText += `━━━━━━━━━━━━━━━━━━
 
-📚 *Detailed Daily Breakdown*
+📚 *Daily Breakdown*
 
-`;
-
-        sortedCurrentLogs.forEach((logDoc, index) => {
-          const logData = logDoc.data();
-          const dateObj = toDate(logData.createdAt) ?? new Date();
-
-          const dayName = dateObj.toLocaleDateString("en-US", {
-            weekday: "long",
-          });
-
-          const dateFormatted = dateObj.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-          });
-
-          reportText += `📅 *${dayName} - ${dateFormatted}*
-
-📖 *Sabak*
-${logData.sabak ?? "-"} | ${logData.sabakReadQuality ?? "-"}`;
-
-          if (logData.sabakReadNotes) {
-            reportText += `
-_Note:_ ${logData.sabakReadNotes}`;
-          }
-
-          reportText += `
-
-🔁 *Sabak Dhor*
-${logData.sabakDhor ?? "-"} | ${logData.sabakDhorReadQuality ?? "-"}`;
-
-          if (logData.sabakDhorReadNotes) {
-            reportText += `
-_Note:_ ${logData.sabakDhorReadNotes}`;
-          }
-
-          reportText += `
-
-📚 *Dhor*
-${logData.dhor ?? "-"} | ${logData.dhorReadQuality ?? "-"}`;
-
-          if (logData.dhorReadNotes) {
-            reportText += `
-_Note:_ ${logData.dhorReadNotes}`;
-          }
-
-          if (logData.generalNotes) {
-            reportText += `
-
-🗒️ *General Note*
-${logData.generalNotes}`;
-          }
-
-          if (index !== sortedCurrentLogs.length - 1) {
-            reportText += `
+${sortedCurrentLogs.map(buildDailyBreakdown).join(`
 
 ──────────────
 
-`;
-          }
-        });
+`)}`;
       } else {
         reportText += `━━━━━━━━━━━━━━━━━━
 
@@ -553,19 +845,9 @@ Please ensure daily progress is logged so parents can receive meaningful weekly 
 
 ━━━━━━━━━━━━━━━━━━
 
-💬 *Parent Reply Options*
+Every letter recited is an investment for this world and the Aakhirah. May Allah place barakah in this hifdh journey and make ${studentName} from the people of the Qur’an.
 
-You may reply with:
-
-1️⃣ Concern  
-2️⃣ Appreciation  
-3️⃣ Question for Ustad  
-
-━━━━━━━━━━━━━━━━━━
-
-May Allah place barakah in this hifdh journey and make the Qur’an a means of success in this world and the Aakhirah.
-
-*The Hifdh Journal*`;
+*Powered by The Hifdh Journal*`;
 
       reports.push({
         studentId: userDoc.id,
@@ -696,7 +978,9 @@ May Allah place barakah in this hifdh journey and make the Qur’an a means of s
             <div class="btn-row">
               <button
                 class="copy-btn"
-                onclick="navigator.clipboard.writeText(${JSON.stringify(r.report)})"
+                onclick="navigator.clipboard.writeText(${JSON.stringify(
+                  r.report
+                )})"
               >
                 Copy Report
               </button>
@@ -707,7 +991,6 @@ May Allah place barakah in this hifdh journey and make the Qur’an a means of s
                       href="${whatsappUrl}"
                       target="_blank"
                       class="btn wa-btn"
-                      onclick="return true;"
                     >
                       Send on WhatsApp
                     </a>`
@@ -721,37 +1004,6 @@ May Allah place barakah in this hifdh journey and make the Qur’an a means of s
 
     html += `
           </div>
-
-          <script>
-            async function markAsSent(studentId, weekKey) {
-              try {
-                await fetch(window.location.pathname, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json"
-                  },
-                  body: JSON.stringify({ studentId, weekKey })
-                });
-
-                const card = document.getElementById("card-" + studentId);
-                if (card) card.remove();
-
-                if (!document.querySelector(".card")) {
-                  const wrap = document.querySelector(".wrap");
-                  const existingEmpty = document.querySelector(".empty");
-
-                  if (!existingEmpty && wrap) {
-                    const div = document.createElement("div");
-                    div.className = "empty";
-                    div.textContent = "All reports for this week have been handled.";
-                    wrap.appendChild(div);
-                  }
-                }
-              } catch (error) {
-                console.error("Failed to mark report as sent", error);
-              }
-            }
-          </script>
         </body>
       </html>
     `;
