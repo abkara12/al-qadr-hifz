@@ -54,6 +54,31 @@ function normalisePhone(phone?: string) {
   return cleaned;
 }
 
+
+function sabakToLines(value: unknown) {
+  const s = toText(value).toLowerCase().trim();
+  if (!s) return 0;
+
+  if (s.includes("page") || s.includes("p")) {
+    const n = parseFloat(s.replace(",", "."));
+    return isNaN(n) ? 0 : n * 13;
+  }
+
+  const n = parseFloat(s.replace(",", "."));
+  return isNaN(n) ? 0 : n;
+}
+
+function getAverageSabakLines(logs: LogDoc[]) {
+  const presentLogs = getPresentLogs(logs);
+
+  if (!presentLogs.length) return "No sabak recorded";
+
+  const totalLines = presentLogs.reduce((sum, doc) => {
+    return sum + sabakToLines(doc.data().sabak);
+  }, 0);
+
+  return `${(totalLines / presentLogs.length).toFixed(1)} lines/day`;
+}
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -695,6 +720,7 @@ export async function GET() {
 
       const overallWeek = getOverallWeek(currentWeekLogs);
       const sabakStrength = getSabakStrength(currentWeekLogs);
+      const averageSabak = getAverageSabakLines(currentWeekLogs);
       const sabakDhorStrength = getSabakDhorStrength(currentWeekLogs);
       const dhorStrength = getDhorStrength(currentWeekLogs);
 
@@ -787,6 +813,7 @@ ${teacherHighlight}
 🎯 *Weekly Goal:* ${weeklyGoal}
 ✅ *Goal Status:* ${goalStatus}
 📖 *Sabak:* ${sabakStrength}
+📊 *Average Sabak:* ${averageSabak}
 🔁 *Sabak Dhor:* ${sabakDhorStrength}
 📚 *Dhor Revision:* ${dhorStrength}
 
