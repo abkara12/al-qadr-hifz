@@ -906,11 +906,6 @@ ${weeklyReflection}
 
 ━━━━━━━━━━━━━━━━━━
 
-✅ *What Went Well*
-
-${whatWentWell.map((point) => `• ${point}`).join("\n")}
-
-━━━━━━━━━━━━━━━━━━
 
 🎯 *Focus For Next Week*
 
