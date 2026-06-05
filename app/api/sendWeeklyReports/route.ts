@@ -125,6 +125,15 @@ function getQualityScore(quality?: string) {
   return 2;
 }
 
+function hasNoQualityData(logs: LogDoc[], fields: string[]) {
+  return logs
+    .filter((doc) => !isAbsentDoc(doc))
+    .every((doc) => {
+      const data = doc.data();
+      return !fields.some((field) => data[field]);
+    });
+}
+
 function averageQuality(logs: LogDoc[], fields: string[]) {
   let total = 0;
   let count = 0;
@@ -172,6 +181,10 @@ function getOverallWeek(logs: LogDoc[]) {
 }
 
 function getSabakStrength(logs: LogDoc[]) {
+  if (hasNoQualityData(logs, ["sabakReadQuality", "sabakRead"])) {
+    return "No logs recorded";
+  }
+
   const avg = averageQuality(logs, ["sabakReadQuality", "sabakRead"]);
 
   if (avg >= 3.2) return "Excellent";
@@ -182,10 +195,11 @@ function getSabakStrength(logs: LogDoc[]) {
 }
 
 function getSabakDhorStrength(logs: LogDoc[]) {
-  const avg = averageQuality(logs, [
-    "sabakDhorReadQuality",
-    "sabakDhorRead",
-  ]);
+  if (hasNoQualityData(logs, ["sabakDhorReadQuality", "sabakDhorRead"])) {
+    return "No logs recorded";
+  }
+
+  const avg = averageQuality(logs, ["sabakDhorReadQuality", "sabakDhorRead"]);
 
   if (avg >= 3.2) return "Excellent";
   if (avg >= 2.7) return "Strong";
@@ -193,8 +207,11 @@ function getSabakDhorStrength(logs: LogDoc[]) {
 
   return "Needs More Attention";
 }
-
 function getDhorStrength(logs: LogDoc[]) {
+  if (hasNoQualityData(logs, ["dhorReadQuality", "dhorRead"])) {
+    return "No logs recorded";
+  }
+
   const avg = averageQuality(logs, ["dhorReadQuality", "dhorRead"]);
 
   if (avg >= 3.2) return "Excellent";
@@ -203,7 +220,6 @@ function getDhorStrength(logs: LogDoc[]) {
 
   return "Needs More Attention";
 }
-
 function compareNumber(current: number, previous: number, label: string) {
   if (!previous && current) return `✅ ${label} started strongly`;
   if (current > previous) return `✅ ${label} improved`;
