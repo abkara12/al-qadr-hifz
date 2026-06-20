@@ -231,7 +231,7 @@ export default function AdminStudentOverviewPage() {
     }
   }, [studentUid]);
 
-const calendarRows = rows;
+const calendarRows = useMemo(() => buildCalendarRows(rows), [rows]);
 
   const absentsByMonth = useMemo(() => {
     const map: Record<string, number> = {};
