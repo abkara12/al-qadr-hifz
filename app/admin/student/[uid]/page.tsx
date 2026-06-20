@@ -142,7 +142,7 @@ const READING_OPTIONS = [
   { value: "Excellent", label: "Excellent" },
   { value: "Good", label: "Good" },
   { value: "Average", label: "Average" },
-  { value: "Poor", label: "Poor" },
+  { value: "Poor", label: "Bring Again" },
 ];
 
 /** -------------------- Page -------------------- */
